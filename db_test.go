@@ -108,7 +108,7 @@ func TestAPI(t *testing.T) {
 	// 写入删除 0-40,version:2 ;剩余 41-60;
 	for i := delStart; i <= delEnd; i++ {
 		key := fmt.Sprintf("key%d", i)
-		if err := db.Del([]byte(key), int64(2)); err != nil {
+		if err := db.Del([]byte(key)); err != nil {
 			t.Fatal(err)
 		}
 	}
