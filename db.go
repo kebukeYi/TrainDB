@@ -2,10 +2,10 @@ package TrainKV
 
 import (
 	"fmt"
-	"github.com/kebukeYi/TrainKV/common"
-	"github.com/kebukeYi/TrainKV/lsm"
-	"github.com/kebukeYi/TrainKV/model"
-	"github.com/kebukeYi/TrainKV/utils"
+	"github.com/kebukeYi/TrainDB/common"
+	"github.com/kebukeYi/TrainDB/lsm"
+	"github.com/kebukeYi/TrainDB/model"
+	"github.com/kebukeYi/TrainDB/utils"
 	"github.com/pkg/errors"
 	"sync"
 )

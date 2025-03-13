@@ -1,8 +1,8 @@
 package lsm
 
 import (
-	"github.com/kebukeYi/TrainKV/common"
-	"github.com/kebukeYi/TrainKV/model"
+	"github.com/kebukeYi/TrainDB/common"
+	"github.com/kebukeYi/TrainDB/model"
 	"sort"
 	"sync"
 )

@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"github.com/kebukeYi/TrainKV/utils"
+	"github.com/kebukeYi/TrainDB/utils"
 	"math"
 )
 
