@@ -102,17 +102,15 @@ func (db *TrainKVDB) Set(entry model.Entry) error {
 	if entry.Key == nil || len(entry.Key) == 0 {
 		return common.ErrEmptyKey
 	}
-	entry.Key = model.KeyWithTestTs(entry.Key, uint64(entry.Version))
-	//entry.Key = model.KeyWithTs(entry.Key)
+	entry.Key = model.KeyWithTs(entry.Key)
 	entry.Version = model.ParseTsVersion(entry.Key)
 	err := db.BatchSet([]*model.Entry{&entry})
 	return err
 }
 
-func (db *TrainKVDB) Del(key []byte, version int64) error {
+func (db *TrainKVDB) Del(key []byte) error {
 	return db.Set(model.Entry{
 		Key:       key,
-		Version:   version,
 		Value:     nil,
 		Meta:      common.BitDelete,
 		ExpiresAt: 0,
