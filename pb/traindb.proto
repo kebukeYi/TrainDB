@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option go_package = "../pb;pb";
+option go_package = "./pb;pb";
 
-// protoc --gofast_out=. .\model.proto
+// protoc --gofast_out=. .\traindb.proto
 
 message ManifestChangeSet{
   repeated ManifestChange changes = 1;
