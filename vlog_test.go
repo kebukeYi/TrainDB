@@ -16,9 +16,9 @@ var vlogTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/vlog"
 var (
 	vlogOpt = &lsm.Options{
 		WorkDir:             vlogTestPath,
-		MemTableSize:        1 << 10,  // 1KB; 64 << 20(64MB)
+		MemTableSize:        10 << 10, // 10KB; 64 << 20(64MB)
 		NumFlushMemtables:   1,        // 默认：15;
-		SSTableMaxSz:        1 << 10,  // 同上
+		SSTableMaxSz:        10 << 10, // 同上
 		BlockSize:           3 * 1024, // 4 * 1024
 		BloomFalsePositive:  0.01,     // 误差率
 		CacheNums:           1 * 1024, // 10240个
@@ -27,8 +27,8 @@ var (
 		ValueLogFileSize:    1 << 29,  // 512MB; 1<<30-1(1GB);
 		VerifyValueChecksum: false,    // false
 
-		MaxBatchCount: 10,
-		MaxBatchSize:  1 << 20,
+		MaxBatchCount: 1000,
+		MaxBatchSize:  10 << 20, // 10 << 20(10MB)
 
 		NumCompactors:       2,       // 4
 		BaseLevelSize:       8 << 20, //8MB; 10 << 20(10MB)

@@ -13,9 +13,9 @@ var dbTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/db"
 
 var dbTestOpt = &lsm.Options{
 	WorkDir:             dbTestPath,
-	MemTableSize:        1 << 10,  // 1KB; 64 << 20(64MB)
+	MemTableSize:        10 << 10, // 10KB; 64 << 20(64MB)
 	NumFlushMemtables:   10,       // 默认:15;
-	SSTableMaxSz:        1 << 10,  // 同上
+	SSTableMaxSz:        10 << 10, // 同上10KB; 64 << 20(64MB)
 	BlockSize:           3 * 1024, // 4 * 1024;
 	BloomFalsePositive:  0.01,     // 误差率;
 	CacheNums:           1 * 1024, // 10240个
@@ -49,15 +49,7 @@ func clearDir() {
 	}
 }
 
-func TestOpenTrainDBNoOpt(t *testing.T) {
-	//db, err, callBack := Open(nil)
-	//db.Close()
-	//err = callBack()
-	//if err != nil {
-	//	return
-	//}
-	//fmt.Printf("open db err:%v \n", err)
-
+func TestOpenTrainDBOpt(t *testing.T) {
 	db, err, callBack := Open(dbTestOpt)
 	defer func() {
 		db.Close()

@@ -1,7 +1,6 @@
 package lsm
 
 import (
-	"github.com/kebukeYi/TrainDB/skl"
 	"os"
 )
 
@@ -64,16 +63,15 @@ func GetLSMDefaultOpt(dirPath string) *Options {
 		ValueLogFileSize: 1<<30 - 1,
 
 		VerifyValueChecksum: false,
-		MaxBatchCount:       0,
-		MaxBatchSize:        0,
+
+		MaxBatchCount: 1000,
+		MaxBatchSize:  10 << 20,
 
 		DiscardStatsCh: nil,
 	}
 }
 
 func CheckLSMOpt(opt *Options) (func() error, error) {
-	opt.MaxBatchSize = (15 * opt.MemTableSize) / 100
-	opt.MaxBatchCount = opt.MaxBatchSize / int64(skl.MaxSkipNodeSize)
 	var err error
 	var tempDir string
 	if opt.WorkDir == "" {
