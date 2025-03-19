@@ -115,6 +115,9 @@ func (skipList *SkipList) randomHeight() int {
 	return h
 }
 func (skipList *SkipList) getNextNode(n *skipNode, h int) *skipNode {
+	if n == nil {
+		return nil
+	}
 	return skipList.arena.getNode(n.getNextOffset(h))
 }
 func (skipList *SkipList) getHead() *skipNode {
@@ -394,8 +397,13 @@ func (s *SkipListIterator) ValueUint64() uint64 {
 	return s.curr.value
 }
 func (s *SkipListIterator) Next() {
-	AssertTrue(s.Valid())
-	s.curr = s.list.getNextNode(s.curr, 0)
+	//AssertTrue(s.Valid())
+	if s.Valid() {
+		s.curr = s.list.getNextNode(s.curr, 0)
+	} else {
+		s.curr = nil
+		return
+	}
 }
 func (s *SkipListIterator) Prev() {
 	AssertTrue(s.Valid())

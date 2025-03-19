@@ -1,7 +1,6 @@
 package lsm
 
 import (
-	"github.com/kebukeYi/TrainDB/common"
 	"github.com/kebukeYi/TrainDB/skl"
 	"os"
 )
@@ -78,8 +77,10 @@ func CheckLSMOpt(opt *Options) (func() error, error) {
 	var err error
 	var tempDir string
 	if opt.WorkDir == "" {
-		tempDir = "/user/trainKV"
-		os.MkdirAll(tempDir, common.DefaultFileMode)
+		tempDir, err = os.MkdirTemp("", "trainDB")
+		if err != nil {
+			panic(err)
+		}
 		opt.WorkDir = tempDir
 	}
 	return func() error {

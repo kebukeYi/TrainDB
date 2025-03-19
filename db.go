@@ -227,7 +227,7 @@ func (db *TrainKVDB) writeToLSM(req *Request) error {
 	}
 	for i, entry := range req.Entries {
 		if db.ShouldWriteValueToLSM(*entry) {
-			entry.Meta = 0
+			// entry.Meta = 0
 		} else {
 			entry.Meta |= common.BitValuePointer
 			entry.Value = req.ValPtr[i].Encode()
