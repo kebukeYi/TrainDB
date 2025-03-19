@@ -707,7 +707,7 @@ func (vlog *ValueLog) gcReWriteLog(logFile *file.VLogFile) error {
 
 func (vlog *ValueLog) sendDiscardStats() error {
 	entry, err := vlog.Db.Get([]byte(common.VlogFileDiscardStatsKey))
-	if err != nil || entry.Version == -1 {
+	if err != nil || entry == nil {
 		return err
 	}
 	val := entry.Value

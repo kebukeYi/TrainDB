@@ -89,7 +89,7 @@ func TestAPI(t *testing.T) {
 		val := fmt.Sprintf("val%d", i)
 		e := model.NewEntry([]byte(key), []byte(val))
 		e.Version = 1
-		if err := db.Set(e); err != nil {
+		if err := db.Set(&e); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -97,8 +97,8 @@ func TestAPI(t *testing.T) {
 	fmt.Println("========================get1(0-60)==================================")
 	for i := putStart; i <= putEnd; i++ {
 		key := fmt.Sprintf("key%d", i)
-		if entry, err := db.Get([]byte(key)); err != nil {
-			fmt.Printf("err: %v; db.Get key=%s ,version:%d \n", err, key, entry.Version)
+		if entry, err := db.Get([]byte(key)); err != nil || entry == nil {
+			fmt.Printf("err: %v; db.Get key=%s;\n", err, key)
 		} else {
 			//fmt.Printf("db.Get key=%s, value=%s, meta:%d,version=%d \n", model.ParseKey(entry.Key), entry.Value, entry.Meta, entry.Version)
 		}
@@ -120,7 +120,7 @@ func TestAPI(t *testing.T) {
 		val := fmt.Sprintf("val%d", i)
 		e := model.NewEntry([]byte(key), []byte(val))
 		e.Version = 3
-		if err := db.Set(e); err != nil {
+		if err := db.Set(&e); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -163,7 +163,7 @@ func TestReStart(t *testing.T) {
 	for i := putStart; i <= putEnd; i++ {
 		key := fmt.Sprintf("key%d", i)
 		if entry, err := db.Get([]byte(key)); err != nil {
-			fmt.Printf("err db.Get key=%s, version:%d, err: %v \n", key, entry.Version, err)
+			fmt.Printf("err db.Get key=%s,err: %v \n", key, err)
 		} else {
 			fmt.Printf("ok  db.Get key=%s, value=%s,meta:%d, version=%d \n",
 				model.ParseKey(entry.Key), entry.Value, entry.Meta, entry.Version)

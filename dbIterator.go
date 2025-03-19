@@ -36,7 +36,7 @@ func (dbIter *DBIterator) Valid() bool {
 }
 func (dbIter *DBIterator) Item() model.Item {
 	judgeKey := func(entry model.Entry) model.Item {
-		if entry.Value != nil && model.IsValPtr(entry) {
+		if entry.Value != nil && model.IsValPtr(&entry) {
 			var vp model.ValuePtr
 			vp.Decode(entry.Value)
 			read, callback, err := dbIter.vlog.Read(&vp)

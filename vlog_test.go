@@ -153,7 +153,7 @@ func TestValueGC(t *testing.T) {
 		_ = callBack()
 	}()
 	sz := 3 << 10
-	kvList := []*model.Entry{}
+	var kvList []*model.Entry
 	for i := 0; i < 40; i++ {
 		e := newRandEntry(sz)
 		kvList = append(kvList, &model.Entry{
@@ -162,13 +162,13 @@ func TestValueGC(t *testing.T) {
 			Meta:      e.Meta,
 			ExpiresAt: e.ExpiresAt,
 		})
-		require.NoError(t, db.Set(e))
+		require.NoError(t, db.Set(&e))
 	}
 	time.Sleep(2 * time.Second)
 	for i := 0; i < 10; i++ {
 		entry := model.NewEntry(kvList[i].Key, nil)
 		entry.Meta |= common.BitDelete
-		require.NoError(t, db.Set(entry))
+		require.NoError(t, db.Set(&entry))
 	}
 
 	// 直接开始GC, 1.pickVlog需要和合并联动; 2.启动 vlog.file 的rewrite();
@@ -198,7 +198,7 @@ func newRandEntry(sz int) model.Entry {
 	return e
 }
 
-func getItemValue(t *testing.T, item model.Entry) (val []byte) {
+func getItemValue(t *testing.T, item *model.Entry) (val []byte) {
 	t.Helper()
 	if item.Value == nil {
 		return nil

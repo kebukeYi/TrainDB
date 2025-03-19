@@ -61,7 +61,7 @@ func (vlog *VLogFile) DoneWriting(offset uint32) error {
 	defer vlog.Lock.Unlock()
 
 	// Truncation must run after unmapping, otherwise Windows would crap itself.
-	if err := vlog.f.Truncature(int64(offset)); err != nil {
+	if err := vlog.f.Truncate(int64(offset)); err != nil {
 		return errors.Wrapf(err, "Unable to truncate file: %q", vlog.FileName())
 
 	}
@@ -78,7 +78,7 @@ func (vlog *VLogFile) Write(offset uint32, buf []byte) (err error) {
 }
 
 func (vlog *VLogFile) Truncate(offset int64) error {
-	return vlog.f.Truncature(offset)
+	return vlog.f.Truncate(offset)
 }
 
 func (vlog *VLogFile) Size() int64 {

@@ -3,30 +3,68 @@
 
 package mmap
 
-import "os"
+import (
+	"golang.org/x/sys/unix"
+	"os"
+	"reflect"
+	"unsafe"
+)
 
-func Mmap(fd *os.File, writable bool, size int64) ([]byte, error) {
-	return mmap(fd, writable, size)
+func mmap(fd *os.File, writable bool, size int64) ([]byte, error) {
+	mtype := unix.PROT_READ
+	if writable {
+		mtype |= unix.PROT_WRITE
+	}
+	return unix.Mmap(int(fd.Fd()), 0, int(size), mtype, unix.MAP_SHARED)
 }
 
-// Munmap unmaps a previously mapped slice.
-func Unmap(b []byte) error {
-	return unmmap(b)
+func remmap(data []byte, size int) ([]byte, error) {
+	const MREMAP_MAYMOVE = 0x1
+
+	header := (*reflect.SliceHeader)(unsafe.Pointer(&data))
+	mmapAddr, _, errno := unix.Syscall6(
+		unix.SYS_MREMAP,
+		header.Data,
+		uintptr(header.Len),
+		uintptr(size),
+		uintptr(MREMAP_MAYMOVE),
+		0,
+		0,
+	)
+	if errno != 0 {
+		return nil, errno
+	}
+
+	header.Data = mmapAddr
+	header.Cap = size
+	header.Len = size
+	return data, nil
 }
 
-// Madvise uses the madvise system call to give advise about the use of memory
-// when using a slice that is memory-mapped to a file. Set the readahead flag to
-// false if page references are expected in random order.
-func Madvise(b []byte, readahead bool) error {
-	return mmapadvise(b, readahead)
+func unmmap(data []byte) error {
+	if len(data) == 0 || len(data) != cap(data) {
+		return unix.EINVAL
+	}
+	_, _, errno := unix.Syscall(
+		unix.SYS_MUNMAP,
+		uintptr(unsafe.Pointer(&data[0])),
+		uintptr(len(data)),
+		0,
+	)
+	if errno != 0 {
+		return errno
+	}
+	return nil
 }
 
-// Msync would call sync on the mmapped data.
-func Msync(b []byte) error {
-	return msync(b)
+func mmapadvise(data []byte, readHead bool) error {
+	flags := unix.MADV_NORMAL
+	if !readHead {
+		flags = unix.MADV_RANDOM
+	}
+	return unix.Madvise(data, flags)
 }
 
-// Mremap unmmap and mmap
-func Mremap(data []byte, size int) ([]byte, error) {
-	return remmap(data, size)
+func msync(b []byte) error {
+	return unix.Msync(b, unix.MS_SYNC)
 }

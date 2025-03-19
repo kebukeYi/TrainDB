@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -45,8 +44,7 @@ func (sst *SSTable) Init() error {
 		return err
 	}
 	stat, _ := sst.file.Fd.Stat()
-	statType := stat.Sys().(*syscall.Stat_t)
-	sst.creationTime = time.Unix(statType.Ctim.Sec, statType.Ctim.Nsec)
+	sst.creationTime = stat.ModTime()
 	keyBytes := ko.GetKey()
 	minKey := make([]byte, len(keyBytes))
 	copy(minKey, keyBytes)
@@ -156,7 +154,7 @@ func (sst *SSTable) Detele() error {
 	return sst.file.Delete()
 }
 func (sst *SSTable) Truncature(size int64) error {
-	return sst.file.Truncature(size)
+	return sst.file.Truncate(size)
 }
 
 func (sst *SSTable) Close() error {

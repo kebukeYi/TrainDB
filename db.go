@@ -64,9 +64,9 @@ func Open(opt *lsm.Options) (*TrainKVDB, error, func() error) {
 	return db, nil, callBack
 }
 
-func (db *TrainKVDB) Get(key []byte) (model.Entry, error) {
+func (db *TrainKVDB) Get(key []byte) (*model.Entry, error) {
 	if key == nil || len(key) == 0 {
-		return model.Entry{Version: -1}, common.ErrEmptyKey
+		return nil, common.ErrEmptyKey
 	}
 	internalKey := model.KeyWithTs(key)
 	var (
@@ -74,42 +74,38 @@ func (db *TrainKVDB) Get(key []byte) (model.Entry, error) {
 		err   error
 	)
 	if entry, err = db.Lsm.Get(internalKey); err != nil {
-		return model.Entry{Version: -1}, err
+		return nil, err
 	}
-	// 1. 返回正常key-val
-	// 2. 返回非正常key-val
-	// 3. 返回大于key-val
-	// 4. 返回小于key-val
 	if lsm.IsDeletedOrExpired(entry) {
-		return model.Entry{Version: -1}, common.ErrKeyNotFound
+		return nil, common.ErrKeyNotFound
 	}
 
-	if entry.Value != nil && model.IsValPtr(entry) {
+	if entry.Value != nil && model.IsValPtr(&entry) {
 		var vp model.ValuePtr
 		vp.Decode(entry.Value)
 		read, callBack, err := db.vlog.Read(&vp)
 		defer model.RunCallback(callBack)
 		if err != nil {
-			return model.Entry{Version: -1}, err
+			return nil, err
 		}
 		entry.Value = model.SafeCopy(nil, read)
 	}
 	entry.Key = key
-	return entry, nil
+	return &entry, nil
 }
 
-func (db *TrainKVDB) Set(entry model.Entry) error {
+func (db *TrainKVDB) Set(entry *model.Entry) error {
 	if entry.Key == nil || len(entry.Key) == 0 {
 		return common.ErrEmptyKey
 	}
 	entry.Key = model.KeyWithTs(entry.Key)
 	entry.Version = model.ParseTsVersion(entry.Key)
-	err := db.BatchSet([]*model.Entry{&entry})
+	err := db.BatchSet([]*model.Entry{entry})
 	return err
 }
 
 func (db *TrainKVDB) Del(key []byte) error {
-	return db.Set(model.Entry{
+	return db.Set(&model.Entry{
 		Key:       key,
 		Value:     nil,
 		Meta:      common.BitDelete,

@@ -2,7 +2,9 @@ syntax = "proto3";
 
 option go_package = "./pb;pb";
 
-// protoc --gofast_out=. .\traindb.proto
+// 1.go get github.com/gogo/protobuf/protoc-gen-gofast
+// 2.go install github.com/gogo/protobuf/protoc-gen-gofast
+// 3.protoc --gofast_out=. .\traindb.proto
 
 message ManifestChangeSet{
   repeated ManifestChange changes = 1;

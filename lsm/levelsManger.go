@@ -1,7 +1,6 @@
 package lsm
 
 import (
-	"fmt"
 	"github.com/kebukeYi/TrainDB/common"
 	"github.com/kebukeYi/TrainDB/model"
 	"github.com/kebukeYi/TrainDB/utils"
@@ -152,7 +151,7 @@ func (lm *levelsManger) flush(imm *memoryTable) (err error) {
 	})
 	common.Panic(err)
 	lm.levelHandlers[0].add(t)
-	fmt.Printf("flush sstable %d.sst; \n", fid)
+	// fmt.Printf("flush sstable %d.sst; \n", fid)
 	return nil
 }
 

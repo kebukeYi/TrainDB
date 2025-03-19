@@ -117,7 +117,7 @@ func (ssb *sstBuilder) add(e model.Entry, isStale bool) {
 	}
 
 	// baseKey:  key:timestamp
-	// 按照 block 为单位 构建 baseKey, 而不是按照16个kv为一组来构建的;
+	// 按照 block 为单位 构建 baseKey;
 	var diffKey []byte
 	if len(ssb.curBlock.baseKey) == 0 {
 		ssb.curBlock.baseKey = append(ssb.curBlock.baseKey, key...)
@@ -131,7 +131,7 @@ func (ssb *sstBuilder) add(e model.Entry, isStale bool) {
 		overlap: uint16(len(key) - len(diffKey)),
 		dif:     uint16(len(diffKey)),
 	}
-	// 记录每一个 kv 的位置, 并没有按照16个一组来进行构建, 而是按照所有的单个entry来构建的 restart Point[];
+	// 记录每一个 kv 的位置, 所有单个entry来构建restart Point[];
 	ssb.curBlock.entryOffsets = append(ssb.curBlock.entryOffsets, uint32(ssb.curBlock.endOffset))
 	ssb.append(header.encode())
 	ssb.append(diffKey)
@@ -196,7 +196,6 @@ func (ssb *sstBuilder) keyDiff(key []byte) []byte {
 	return key[i:]
 }
 
-// 2. 将当前所有 block 写入文件中
 func (ssb *sstBuilder) flush(lm *levelsManger, tableName string) (t *table, err error) {
 	bd := ssb.done()
 	fid := utils.FID(tableName)

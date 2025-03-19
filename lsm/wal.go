@@ -206,7 +206,11 @@ func (w *WAL) CloseAndRemove() error {
 }
 
 func (w *WAL) Close() error {
-	if err := w.file.Close(); err != nil {
+	err := w.file.Truncate(int64(w.writeAt))
+	if err != nil {
+		return err
+	}
+	if err = w.file.Close(); err != nil {
 		return err
 	}
 	return nil

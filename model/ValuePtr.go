@@ -35,7 +35,7 @@ func (p *ValuePtr) Decode(b []byte) {
 	copy((*[vptrSize]byte)(unsafe.Pointer(p))[:], b[:vptrSize])
 }
 
-func IsValPtr(entry Entry) bool {
+func IsValPtr(entry *Entry) bool {
 	return entry.Meta&common.BitValuePointer > 0
 }
 

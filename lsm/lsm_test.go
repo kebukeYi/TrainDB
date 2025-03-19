@@ -24,8 +24,8 @@ var lsmOptions = &Options{
 	ValueLogFileSize:    1 << 29,  // 512MB; 默认:1<<30-1(1GB);
 	VerifyValueChecksum: false,    // 默认:false
 
-	MaxBatchCount: 10,      // 实时计算
-	MaxBatchSize:  1 << 20, // 实时计算
+	MaxBatchCount: 10,      // 每次启动根据参数计算
+	MaxBatchSize:  1 << 20, // 每次启动根据参数计算
 
 	NumCompactors:       2,                  // 默认:4
 	BaseLevelSize:       8 << 20,            //8MB; 默认: 10 << 20(10MB)
