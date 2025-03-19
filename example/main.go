@@ -23,19 +23,19 @@ func main() {
 	key := "name"
 	val := "trainDB"
 
-	// set key
+	// Set key.
 	e := model.NewEntry([]byte(key), []byte(val))
-
 	if err := db.Set(&e); err != nil {
 		panic(err)
 	}
 
+	// To test a valid key for the following iterator.
 	newE := model.NewEntry([]byte("newName"), []byte("validVal"))
 	if err := db.Set(&newE); err != nil {
 		panic(err)
 	}
 
-	// get key
+	// Get key.
 	if entry, err := db.Get([]byte(key)); err != nil || entry == nil {
 		fmt.Printf("err: %v; db.Get key=%s;\n", err, key)
 	} else {
@@ -43,12 +43,12 @@ func main() {
 			model.ParseKey(entry.Key), entry.Value, entry.Meta, entry.Version)
 	}
 
-	// delete key
+	// Delete key.
 	if err := db.Del([]byte(key)); err != nil {
 		panic(err)
 	}
 
-	// get key again
+	// Get key again.
 	if entry, err := db.Get([]byte(key)); err != nil || entry == nil {
 		fmt.Printf("db.Get key=%s; err: %v;\n", err, key)
 	} else {
@@ -56,7 +56,7 @@ func main() {
 			model.ParseKey(entry.Key), entry.Value, entry.Meta, entry.Version)
 	}
 
-	// iterator keys(Only valid values are returned)
+	// Iterator keys(Only valid values are returned).
 	iter := db.NewDBIterator(&model.Options{IsAsc: true})
 	defer func() { _ = iter.Close() }()
 	iter.Rewind()
