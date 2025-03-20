@@ -67,11 +67,11 @@ func (lm *levelsManger) build() error {
 
 	var maxFID uint64
 	for fid, tableInfo := range manifest.Tables {
-		fileName := utils.FileNameSSTable(lm.opt.WorkDir, fid)
+		filePathName := utils.FileNameSSTable(lm.opt.WorkDir, fid)
 		if fid > maxFID {
 			maxFID = fid
 		}
-		t, _ := openTable(lm, fileName, nil)
+		t, _ := openTable(lm, filePathName, nil)
 		lm.levelHandlers[tableInfo.LevelID].add(t)
 		lm.levelHandlers[tableInfo.LevelID].addSize(t)
 	}

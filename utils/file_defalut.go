@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"hash/crc32"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -40,7 +39,8 @@ func LoadIDMap(dir string) map[uint64]struct{} {
 
 // FID 根据file name 获取其fid;
 func FID(name string) uint64 {
-	name = path.Base(name)
+	//name = path.Base(name) // 仅仅处理 /
+	name = filepath.Base(name) // 处理 \ 和 /
 	if !strings.HasSuffix(name, ".sst") {
 		return 0
 	}
