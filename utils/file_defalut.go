@@ -73,17 +73,3 @@ func VerifyChecksum(data []byte, expected []byte) error {
 func CalculateChecksum(data []byte) uint64 {
 	return uint64(crc32.Checksum(data, common.CastigationCryTable))
 }
-
-func SyncDir(dir string) error {
-	df, err := os.Open(dir)
-	if err != nil {
-		return errors.Wrapf(err, "while opening %s", dir)
-	}
-	if err := df.Sync(); err != nil {
-		return errors.Wrapf(err, "while syncing %s", dir)
-	}
-	if err := df.Close(); err != nil {
-		return errors.Wrapf(err, "while closing %s", dir)
-	}
-	return nil
-}

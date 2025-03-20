@@ -11,6 +11,8 @@ import (
 
 var dbTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/db"
 
+// var dbTestPath = "F:\\TrainDB\\test\\dbtest"
+
 var dbTestOpt = &lsm.Options{
 	WorkDir:             dbTestPath,
 	MemTableSize:        10 << 10, // 10KB; 64 << 20(64MB)
@@ -43,7 +45,7 @@ func clearDir() {
 			common.Panic(err)
 		}
 	}
-	err = os.Mkdir(dbTestOpt.WorkDir, os.ModePerm)
+	err = os.MkdirAll(dbTestOpt.WorkDir, os.ModePerm)
 	if err != nil {
 		_ = fmt.Sprintf("create dir %s failed", dbTestOpt.WorkDir)
 	}

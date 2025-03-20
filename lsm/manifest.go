@@ -276,11 +276,11 @@ func doRewrite(dir string, manifest *Manifest) (*os.File, int, error) {
 	binary.BigEndian.PutUint32(crcBuf[4:8], checksum)
 	headerBuf = append(headerBuf, crcBuf[:]...)
 	headerBuf = append(headerBuf, changeBuf...)
-	if _, err := file.Write(headerBuf); err != nil {
+	if _, err = file.Write(headerBuf); err != nil {
 		file.Close()
 		return nil, 0, err
 	}
-	if err := file.Sync(); err != nil {
+	if err = file.Sync(); err != nil {
 		file.Close()
 		return nil, 0, err
 	}
@@ -302,7 +302,7 @@ func doRewrite(dir string, manifest *Manifest) (*os.File, int, error) {
 		return nil, 0, err
 	}
 
-	if err := utils.SyncDir(dir); err != nil {
+	if err = utils.SyncDir(dir); err != nil {
 		file.Close()
 		return nil, 0, err
 	}
