@@ -12,6 +12,8 @@ import (
 
 var compactTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/compact"
 
+//var compactTestPath = "F:\\ProjectsData\\golang\\TrainDB\\test\\compact"
+
 var compactOptions = &Options{
 	WorkDir:             compactTestPath,
 	MemTableSize:        10 << 10, // 10KB; 64 << 20(64MB)

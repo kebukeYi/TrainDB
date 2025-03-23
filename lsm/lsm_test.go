@@ -11,6 +11,8 @@ import (
 
 var lsmTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/lsm"
 
+//var lsmTestPath = "F:\\ProjectsData\\golang\\TrainDB\\test\\lsm"
+
 var lsmOptions = &Options{
 	WorkDir:             lsmTestPath,
 	MemTableSize:        10 << 10, // 10KB; 默认:64 << 20(64MB)

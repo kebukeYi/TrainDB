@@ -120,7 +120,18 @@ func (lsm *LSM) recovery() (*memoryTable, []*memoryTable) {
 		return fids[i] < fids[j]
 	})
 	var immutable []*memoryTable
+	sstMaxID := lsm.levelManger.maxFID.Load()
 	for _, fid := range fids {
+		if fid == sstMaxID {
+			fmt.Printf("LSM.#recovery(): sstMaxFid(%d.sst) is not allow equal to wal fid(%d.wal)!", sstMaxID, fid)
+			// 方式A: 进行删除相关wal文件;
+			//if err = os.Remove(mtFilePath(lsm.option.WorkDir, fid)); err != nil {
+			//	panic(err)
+			//}
+			//continue
+			// 方式B: 直接退出报错处理;
+			panic("LSM.#recovery(): sstMaxFid is not equal to wal fid")
+		}
 		memTable, err := lsm.openMemTable(fid)
 		errors.CondPanic(err != nil, err)
 		if memTable.skipList.GetMemSize() == 0 {

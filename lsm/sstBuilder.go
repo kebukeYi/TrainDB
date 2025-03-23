@@ -213,6 +213,7 @@ func (ssb *sstBuilder) flush(lm *levelsManger, tableName string) (t *table, err 
 	if err != nil {
 		return nil, err
 	}
+	// copy 之前 文件建立好了, 但是数据还没复制完毕, 宕机了; 怎么办?
 	copy(mmapBuf, buf)
 	return t, nil
 }

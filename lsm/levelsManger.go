@@ -138,13 +138,18 @@ func (lm *levelsManger) flush(imm *memoryTable) (err error) {
 
 	builder := newSSTBuilder(lm.opt)
 	skipListIterator := imm.skipList.NewSkipListIterator(strconv.FormatUint(fid, 10) + MemTableName)
-	defer skipListIterator.Close()
+	defer skipListIterator.Close() // 涉及到 immemoryTable的清除和相关 wal的清理;
 	for skipListIterator.Rewind(); skipListIterator.Valid(); skipListIterator.Next() {
 		entry := skipListIterator.Item().Item
 		builder.add(entry, false)
 	}
 
+	// 此时磁盘中已经生成 .sst 文件;
 	t, _ := openTable(lm, sstName, builder)
+	// 向manifest 中添加, 添加失败了呢?
+	// 假设5.wal 刚转化成 5.sst, 那么5.wal理应被删除掉;但是和5.wal绑定的跳表正在被引用,因此无法直接删除掉5.wal;
+	// 随后 系统突然宕机关闭, 重启时, 会先加载 .sst文件, 然后再加载.wal; 那么就会出现 5.wal 和 5.sst 的重叠;
+	// 因此, 在 wal 刷盘时, 等于 .sst 的最大文件ID的 .wal 文件需要删除掉;
 	err = lm.manifestFile.AddTableMeta(0, &TableMeta{
 		ID:       fid,
 		Checksum: []byte{'s', 'k', 'i', 'p'},

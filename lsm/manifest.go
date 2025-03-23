@@ -345,9 +345,11 @@ func (mf *ManifestFile) checkSSTable(ids map[uint64]struct{}) error {
 		}
 	}
 	for id := range ids {
+		// manifest 不存在, 实际目录中不存在;
 		if _, ok := mf.manifest.Tables[id]; !ok {
-			fmt.Printf("#checkSSTable(): Table file %d  not referenced in MANIFEST.\n", id)
 			ssTablePath := GetSSTablePathFromId(mf.opt.Dir, id)
+			fmt.Printf("#checkSSTable(): Table file %s not referenced in MANIFEST.\n", ssTablePath)
+
 			if err := os.Remove(ssTablePath); err != nil {
 				return common.ErrBadRemoveSST
 			}

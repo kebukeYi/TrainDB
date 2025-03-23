@@ -7,6 +7,8 @@ import (
 
 var manifestTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/manifest"
 
+//var manifestTestPath = "F:\\ProjectsData\\golang\\TrainDB\\test\\manifest"
+
 func TestOpenManifestFile(t *testing.T) {
 	clearDir(manifestTestPath)
 	tempDir := manifestTestPath

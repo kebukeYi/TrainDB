@@ -57,7 +57,7 @@ func openTable(lm *levelsManger, tableName string, builder *sstBuilder) (*table,
 	itr := t.NewTableIterator(&model.Options{IsAsc: false})
 	defer itr.Close()
 	itr.Rewind()
-	common.CondPanic(!itr.Valid(), errors.Errorf("failed to read index, form maxKey"))
+	common.CondPanic(!itr.Valid(), errors.Errorf("failed to read index, form maxKey,err:%s", itr.err))
 
 	maxKey := itr.Item().Item.Key
 	t.sst.SetMaxKey(maxKey)
