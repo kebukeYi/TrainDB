@@ -235,8 +235,8 @@ func NewMergeIterator(iters []model.Iterator, reverse bool) model.Iterator {
 		NewMergeIterator(iters[:mid], reverse),
 		NewMergeIterator(iters[mid:], reverse)}, reverse)
 }
-func (iter *MergeIterator) Name() string {
-	return iter.small.iter.Name()
+func (m *MergeIterator) Name() string {
+	return m.small.iter.Name()
 }
 func (m *MergeIterator) fix() {
 	if !m.otherNode().valid {

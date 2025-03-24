@@ -22,6 +22,10 @@ func (db *TrainKVDB) NewDBIterator(opt *model.Options) *DBIterator {
 	}
 	return res
 }
+
+func (dbIter *DBIterator) Name() string {
+	return "DBIterator"
+}
 func (dbIter *DBIterator) Next() {
 	dbIter.iter.Next()
 }
