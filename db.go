@@ -76,7 +76,7 @@ func (db *TrainKVDB) Get(key []byte) (*model.Entry, error) {
 	if entry, err = db.Lsm.Get(internalKey); err != nil {
 		return nil, err
 	}
-	if lsm.IsDeletedOrExpired(entry) {
+	if lsm.IsDeletedOrExpired(&entry) {
 		return nil, common.ErrKeyNotFound
 	}
 
@@ -159,6 +159,14 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 	defer closer.Done()
 	var reqLen int64
 	reqs := make([]*Request, 0, 10)
+	blockChan := make(chan struct{}, 1)
+	writeRequest := func(reqs []*Request) {
+		if err := db.writeRequest(reqs); err != nil {
+			common.Panic(err)
+		}
+		<-blockChan
+	}
+
 	for {
 		var r *Request
 		select {
@@ -167,18 +175,32 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 				select {
 				case r = <-db.writeCh:
 					reqs = append(reqs, r)
-				default: // b.writeCh 中没有更多数据, 执行 default 分支;
-					db.writeRequest(reqs)
+				default: // db.writeCh 中没有更多数据, 执行 default 分支;
+					blockChan <- struct{}{}
+					writeRequest(reqs)
 					return
 				}
 			}
 		case r = <-db.writeCh:
 			reqs = append(reqs, r)
 			reqLen = int64(len(reqs))
+
 			if reqLen >= 3*common.KVWriteChRequestCapacity {
-				go db.writeRequest(reqs)
-				reqs = make([]*Request, 0, 1)
+				blockChan <- struct{}{}
+				go writeRequest(reqs)
+				reqs = make([]*Request, 0, 10)
 				reqLen = 0
+			}
+
+			select {
+			case blockChan <- struct{}{}:
+				go writeRequest(reqs)
+				reqs = make([]*Request, 0, 10)
+				reqLen = 0
+			case <-closer.CloseSignal:
+				go writeRequest(reqs)
+				return
+			default:
 			}
 		}
 	}

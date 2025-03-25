@@ -63,7 +63,6 @@ func (vlog *ValueLog) Open(replayFn model.LogEntry) error {
 		lf, ok := vlog.filesMap[fid]
 		common.CondPanic(!ok, fmt.Errorf("vlog.filesMap[fid] fid not found"))
 		var err error
-		// 打开文件
 		if err = lf.Open(&utils.FileOptions{
 			FID:      uint64(fid),
 			FileName: vlog.fpath(fid),

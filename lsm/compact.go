@@ -632,12 +632,12 @@ func (lm *levelsManger) subCompact(iterator model.Iterator, kr keyRange, cd comp
 
 	// 经过判断,得到最后真正需要保留的key;
 	builderAdd := func(builder *sstBuilder, e model.Entry) {
-		isDeletedOrExpired := IsDeletedOrExpired(e)
+		isDeletedOrExpired := IsDeletedOrExpired(&e)
 		switch {
 		case isDeletedOrExpired:
-			builder.AddStaleKey(e)
+			builder.AddStaleKey(&e)
 		default:
-			builder.AddKey(e)
+			builder.AddKey(&e)
 		}
 	}
 
@@ -729,7 +729,7 @@ func (lm *levelsManger) subCompact(iterator model.Iterator, kr keyRange, cd comp
 		}(builder)
 	} // for over
 }
-func IsDeletedOrExpired(e model.Entry) bool {
+func IsDeletedOrExpired(e *model.Entry) bool {
 	if e.Meta&common.BitDelete > 0 {
 		return true
 	}

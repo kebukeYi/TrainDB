@@ -199,8 +199,8 @@ func (t *table) GetCreatedAt() *time.Time {
 }
 
 func (t *table) Delete() error {
-	fmt.Printf("delete sstTable:  %d.sst;\n", t.sst.fid)
-	return t.sst.Detele()
+	//fmt.Printf("delete sstTable:  %d.sst;\n", t.sst.fid)
+	return t.sst.Delete()
 }
 
 type tableIterator struct {

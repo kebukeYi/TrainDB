@@ -83,16 +83,16 @@ func newSSTBuilder(opt *Options) *sstBuilder {
 	}
 }
 
-func (ssb *sstBuilder) AddKey(e model.Entry) {
+func (ssb *sstBuilder) AddKey(e *model.Entry) {
 	ssb.add(e, false)
 }
 
-func (ssb *sstBuilder) AddStaleKey(e model.Entry) {
+func (ssb *sstBuilder) AddStaleKey(e *model.Entry) {
 	ssb.staleDataSize += len(e.Key) + len(e.Value) + 4 /* entry offset */ + 4 /* header size */
 	ssb.add(e, true)
 }
 
-func (ssb *sstBuilder) add(e model.Entry, isStale bool) {
+func (ssb *sstBuilder) add(e *model.Entry, isStale bool) {
 	key := e.Key
 	val := model.ValueExt{
 		Meta:      e.Meta,
@@ -160,11 +160,11 @@ func (ssb *sstBuilder) allocate(need int) []byte {
 	return curb.data[curb.endOffset-need : curb.endOffset]
 }
 
-func (ssb *sstBuilder) tryNewBlock(e model.Entry) bool {
+func (ssb *sstBuilder) tryNewBlock(e *model.Entry) bool {
 	if ssb.curBlock == nil {
 		return true
 	}
-	if len(ssb.curBlock.entryOffsets) <= 0 {
+	if len(ssb.curBlock.entryOffsets) == 0 {
 		return false
 	}
 

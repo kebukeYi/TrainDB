@@ -18,8 +18,7 @@ const (
 	DefaultFileMode                   = 0666
 	MaxHeaderSize                     = 21 // 基于可变长编码,vlogFile其最可能的编码
 	VlogHeaderSize                    = 0
-	// KVWriteChRequestCapacity                 = 1000
-	KVWriteChRequestCapacity = 0
+	KVWriteChRequestCapacity          = 1000
 )
 
 // meta

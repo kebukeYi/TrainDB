@@ -131,7 +131,6 @@ func (sst *SSTable) Bytes(off, sz int) ([]byte, error) {
 	return sst.file.Bytes(off, sz)
 }
 
-// Size 返回底层文件的尺寸;
 func (sst *SSTable) Size() int64 {
 	fileStats, err := sst.file.Fd.Stat()
 	common.Panic(err)
@@ -150,10 +149,11 @@ func (sst *SSTable) HasBloomFilter() bool {
 	return sst.hasBloomFilter
 }
 
-func (sst *SSTable) Detele() error {
+func (sst *SSTable) Delete() error {
 	return sst.file.Delete()
 }
-func (sst *SSTable) Truncature(size int64) error {
+
+func (sst *SSTable) Truncate(size int64) error {
 	return sst.file.Truncate(size)
 }
 

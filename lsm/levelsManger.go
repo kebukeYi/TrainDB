@@ -141,7 +141,7 @@ func (lm *levelsManger) flush(imm *memoryTable) (err error) {
 	defer skipListIterator.Close() // 涉及到 immemoryTable的清除和相关 wal的清理;
 	for skipListIterator.Rewind(); skipListIterator.Valid(); skipListIterator.Next() {
 		entry := skipListIterator.Item().Item
-		builder.add(entry, false)
+		builder.add(&entry, false)
 	}
 
 	// 此时磁盘中已经生成 .sst 文件;
