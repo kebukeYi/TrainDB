@@ -1,7 +1,6 @@
 package TrainDB
 
 import (
-	"fmt"
 	"github.com/kebukeYi/TrainDB/common"
 	"github.com/kebukeYi/TrainDB/lsm"
 	"github.com/kebukeYi/TrainDB/model"
@@ -296,6 +295,6 @@ func (db *TrainKVDB) Close() error {
 	if err := db.vlog.Close(); err != nil {
 		return err
 	}
-	fmt.Println("db.Close exit.")
+	// fmt.Println("db.Close exit.")
 	return nil
 }

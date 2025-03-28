@@ -38,16 +38,41 @@ var dbTestOpt = &lsm.Options{
 	MaxLevelNum:         common.MaxLevelNum,
 }
 
-func clearDir() {
-	_, err := os.Stat(dbTestOpt.WorkDir)
+var benchMarkOpt = &lsm.Options{
+	WorkDir:             dbTestPath,
+	MemTableSize:        10 << 20, // 10MB; 64 << 20(64MB)
+	NumFlushMemtables:   10,       // 默认:15;
+	SSTableMaxSz:        10 << 20, // 10MB; 64 << 20(64MB)
+	BlockSize:           4 * 1024, // 4 * 1024;
+	BloomFalsePositive:  0.01,     // 误差率;
+	CacheNums:           1 * 1024, // 10240个
+	ValueThreshold:      1 << 20,  // 1MB; 1 << 20(1MB)
+	ValueLogMaxEntries:  10000,    // 1000000
+	ValueLogFileSize:    1 << 29,  // 512MB; 1<<30-1(1GB);
+	VerifyValueChecksum: false,    // false
+
+	MaxBatchCount: 1000,
+	MaxBatchSize:  10 << 20, // 10 << 20(10MB)
+
+	NumCompactors:       3,       // 4
+	BaseLevelSize:       8 << 20, //8MB; 10 << 20(10MB)
+	LevelSizeMultiplier: 2,       // 10
+	TableSizeMultiplier: 2,
+	BaseTableSize:       5 << 20, // 2 << 20(2MB)
+	NumLevelZeroTables:  5,
+	MaxLevelNum:         common.MaxLevelNum,
+}
+
+func clearDir(dir string) {
+	_, err := os.Stat(dir)
 	if err == nil {
-		if err = os.RemoveAll(dbTestOpt.WorkDir); err != nil {
+		if err = os.RemoveAll(dir); err != nil {
 			common.Panic(err)
 		}
 	}
-	err = os.MkdirAll(dbTestOpt.WorkDir, os.ModePerm)
+	err = os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
-		_ = fmt.Sprintf("create dir %s failed", dbTestOpt.WorkDir)
+		_ = fmt.Sprintf("create dir %s failed", dir)
 	}
 }
 
@@ -64,18 +89,19 @@ func TestOpenTrainDBOpt(t *testing.T) {
 }
 
 func TestAPI(t *testing.T) {
-	clearDir()
-	db, _, callBack := Open(dbTestOpt)
+	clearDir(benchMarkOpt.WorkDir)
+	//db, _, callBack := Open(dbTestOpt)
+	db, _, callBack := Open(benchMarkOpt)
 	defer func() {
 		_ = db.Close()
 		_ = callBack()
 	}()
 	putStart := 0
-	putEnd := 60
-	putStart1 := 70
-	putEnd1 := 90
+	putEnd := 600
+	putStart1 := 700
+	putEnd1 := 900
 	delStart := 0
-	delEnd := 40
+	delEnd := 400
 	fmt.Println("========================put1(0-60)==================================")
 	// 写入 0-60 version=1
 	for i := putStart; i <= putEnd; i++ {
@@ -145,13 +171,14 @@ func TestAPI(t *testing.T) {
 }
 
 func TestReStart(t *testing.T) {
-	db, _, callBack := Open(dbTestOpt)
+	//db, _, callBack := Open(dbTestOpt)
+	db, _, callBack := Open(benchMarkOpt)
 	defer func() {
 		_ = db.Close()
 		_ = callBack()
 	}()
 	putStart := 0
-	putEnd := 90
+	putEnd := 900
 	// 读取
 	fmt.Println("=============db.get=========================================")
 	for i := putStart; i <= putEnd; i++ {

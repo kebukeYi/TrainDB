@@ -73,7 +73,7 @@ func TestValueLog_Entry(t *testing.T) {
 
 func TestVlogBase(t *testing.T) {
 	// 清理目录
-	clearDir()
+	clearDir(vlogOpt.WorkDir)
 	// 打开DB
 	db, _, callBack := Open(vlogOpt)
 	defer func() {
@@ -145,7 +145,7 @@ func TestVlogBase(t *testing.T) {
 }
 
 func TestValueGC(t *testing.T) {
-	clearDir()
+	clearDir(vlogOpt.WorkDir)
 	vlogOpt.ValueLogFileSize = 1 << 20
 	db, _, callBack := Open(vlogOpt)
 	defer func() {
@@ -164,7 +164,7 @@ func TestValueGC(t *testing.T) {
 			Meta:      e.Meta,
 			ExpiresAt: e.ExpiresAt,
 		})
-		require.NoError(t, db.Set(&e))
+		require.NoError(t, db.Set(e))
 	}
 	time.Sleep(2 * time.Second)
 	for i := 0; i < 10; i++ {
@@ -192,7 +192,7 @@ func TestValueGC(t *testing.T) {
 	}
 }
 
-func newRandEntry(sz int) model.Entry {
+func newRandEntry(sz int) *model.Entry {
 	v := make([]byte, sz)
 	rand.Read(v[:rand.Intn(sz)])
 	e := model.BuildEntry()
