@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-//var dbTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/db"
+var dbTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/db"
 
-var dbTestPath = "F:\\ProjectsData\\golang\\TrainDB\\test\\db"
+//var dbTestPath = "F:\\ProjectsData\\golang\\TrainDB\\test\\db"
 
 var dbTestOpt = &lsm.Options{
 	WorkDir:             dbTestPath,
@@ -89,9 +89,10 @@ func TestOpenTrainDBOpt(t *testing.T) {
 }
 
 func TestAPI(t *testing.T) {
-	clearDir(benchMarkOpt.WorkDir)
-	//db, _, callBack := Open(dbTestOpt)
-	db, _, callBack := Open(benchMarkOpt)
+	//clearDir(benchMarkOpt.WorkDir)
+	//db, _, callBack := Open(benchMarkOpt)
+	clearDir(dbTestOpt.WorkDir)
+	db, _, callBack := Open(dbTestOpt)
 	defer func() {
 		_ = db.Close()
 		_ = callBack()
@@ -171,8 +172,8 @@ func TestAPI(t *testing.T) {
 }
 
 func TestReStart(t *testing.T) {
-	//db, _, callBack := Open(dbTestOpt)
-	db, _, callBack := Open(benchMarkOpt)
+	db, _, callBack := Open(dbTestOpt)
+	//db, _, callBack := Open(benchMarkOpt)
 	defer func() {
 		_ = db.Close()
 		_ = callBack()

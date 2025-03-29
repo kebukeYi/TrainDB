@@ -58,7 +58,7 @@ func BuildBigEntry(key []byte, bigValSize uint64) *Entry {
 }
 
 func BuildKeyEntry(key []byte) *Entry {
-	value := []byte(randStr(128))
+	value := []byte(randStr(6))
 	expiresAt := uint64(time.Now().Add(12*time.Hour).UnixNano() / 1e6)
 	return &Entry{
 		Key:       key,

@@ -159,6 +159,7 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 	var reqLen int64
 	reqs := make([]*Request, 0, 10)
 	blockChan := make(chan struct{}, 1)
+
 	writeRequest := func(reqs []*Request) {
 		if err := db.writeRequest(reqs); err != nil {
 			common.Panic(err)

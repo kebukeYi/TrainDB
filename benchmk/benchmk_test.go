@@ -7,9 +7,13 @@ import (
 	"github.com/kebukeYi/TrainDB/lsm"
 	"github.com/kebukeYi/TrainDB/model"
 	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"os"
 	"testing"
+	"time"
 )
+
+//var benchMarkDir = "/usr/projects_gen_data/goprogendata/trainkvdata/test/benchmk"
 
 var benchMarkDir = "F:\\ProjectsData\\golang\\TrainDB\\benchmk"
 
@@ -23,17 +27,17 @@ var benchMarkOpt = &lsm.Options{
 	CacheNums:           1 * 1024, // 10240个
 	ValueThreshold:      1 << 20,  // 1MB; 1 << 20(1MB)
 	ValueLogMaxEntries:  10000,    // 1000000
-	ValueLogFileSize:    1 << 29,  // 512MB; 1<<30-1(1GB)
+	ValueLogFileSize:    1 << 27,  // 128*2=256MB; 1<<30-1(1GB)
 	VerifyValueChecksum: false,    // false
 
 	MaxBatchCount: 1000,
 	MaxBatchSize:  10 << 20, // 10 << 20(10MB)
 
 	NumCompactors:       3,       // 4
-	BaseLevelSize:       8 << 20, //8MB; 10 << 20(10MB)
+	BaseTableSize:       5 << 20, // 2 << 20(2MB)
+	BaseLevelSize:       8 << 20, // 8MB; 10 << 20(10MB)
 	LevelSizeMultiplier: 2,       // 10
 	TableSizeMultiplier: 2,
-	BaseTableSize:       5 << 20, // 2 << 20(2MB)
 	NumLevelZeroTables:  5,
 	MaxLevelNum:         common.MaxLevelNum,
 }
@@ -52,55 +56,43 @@ func clearDir(dir string) {
 }
 
 func BenchmarkNormalEntry(b *testing.B) {
-	// go test -bench=BenchmarkBigEntry -benchtime=5s -count=5  # 运行5次，每次至少5秒
-	// go test -bench=BenchmarkBigEntry -benchtime=100000x  # 固定运行100,000次
+	// go test -bench=BenchmarkNormalEntry -benchtime=3s -count=2 -failfast
+	// go test -bench=BenchmarkNormalEntry -benchtime=100000x -count=3 -failfast
 	b.ResetTimer()
 	b.ReportAllocs()
 	clearDir(benchMarkOpt.WorkDir)
-	//traindb, _, _ := TrainDB.Open(benchMarkOpt)
-	traindb, _, _ := TrainDB.Open(lsm.GetLSMDefaultOpt(benchMarkOpt.WorkDir))
+	traindb, _, _ := TrainDB.Open(benchMarkOpt)
+	//traindb, _, _ := TrainDB.Open(lsm.GetLSMDefaultOpt(benchMarkOpt.WorkDir))
 	defer traindb.Close()
 
 	for i := 0; i < b.N; i++ {
 		key := []byte(fmt.Sprintf("key=%d", i))
-		err := traindb.Set(model.BuildKeyEntry(key)) // val : 128B
-		assert.Nil(b, err)
-	}
-}
-
-func BenchmarkBigEntry(b *testing.B) {
-	// go test -bench=BenchmarkBigEntry -benchtime=5s -count=5  # 运行5次，每次至少5秒
-	// go test -bench=BenchmarkBigEntry -benchtime=100000x  # 固定运行100,000次
-	b.ResetTimer()
-	b.ReportAllocs()
-	clearDir(benchMarkOpt.WorkDir)
-	//traindb, _, _ := TrainDB.Open(benchMarkOpt)
-	traindb, _, _ := TrainDB.Open(lsm.GetLSMDefaultOpt(benchMarkOpt.WorkDir))
-	defer traindb.Close()
-
-	for i := 0; i < b.N; i++ {
-		key := []byte(fmt.Sprintf("key=%d", i))
-		valSize := 10<<20 + 1 // val 10.01MB
+		valSize := 5 + 1 // val: 6B
+		//valSize := 127 + 1 // val: 12B
+		//valSize := 10 << 20+1 // val: 10.01MB
+		//valSize := 64 << 20+1 // val: 64.01MB
 		err := traindb.Set(model.BuildBigEntry(key, uint64(valSize)))
 		assert.Nil(b, err)
 	}
-}
 
-func BenchmarkMoreBigEntry(b *testing.B) {
-	// go test -bench=BenchmarkMoreBigEntry -benchtime=5s -count=5  # 运行5次，每次至少5秒
-	// go test -bench=BenchmarkMoreBigEntry -benchtime=100000x  # 固定运行100,000次
-	b.ResetTimer()
-	b.ReportAllocs()
-	clearDir(benchMarkOpt.WorkDir)
-	//traindb, _, _ := TrainDB.Open(benchMarkOpt)
-	traindb, _, _ := TrainDB.Open(lsm.GetLSMDefaultOpt(benchMarkOpt.WorkDir))
-	defer traindb.Close()
-
-	fmt.Println(b.N)
 	for i := 0; i < b.N; i++ {
 		key := []byte(fmt.Sprintf("key=%d", i))
-		valSize := 64<<20 + 1 // val 10.01MB
-		err := traindb.Set(model.BuildBigEntry(key, uint64(valSize)))
+		_, err := traindb.Get(key)
 		assert.Nil(b, err)
+
+		key = []byte(randStr(18))
+		_, err = traindb.Get(key)
+		assert.Error(b, err)
 	}
+}
+func randStr(length int) string {
+	// 包括特殊字符,进行测试
+	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	bytes := []byte(str)
+	result := []byte{}
+	rand.Seed(time.Now().UnixNano() + int64(rand.Intn(100)))
+	for i := 0; i < length; i++ {
+		result = append(result, bytes[rand.Intn(len(bytes))])
+	}
+	return string(result)
 }
