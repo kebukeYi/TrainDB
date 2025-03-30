@@ -17,7 +17,6 @@ var lsmOptions = &Options{
 	WorkDir:             lsmTestPath,
 	MemTableSize:        10 << 10, // 10KB; 默认:64 << 20(64MB)
 	NumFlushMemtables:   1,        // 默认：15;
-	SSTableMaxSz:        10 << 10, // 同上
 	BlockSize:           2 * 1024, // 默认:4 * 1024
 	BloomFalsePositive:  0.01,     // 误差率
 	CacheNums:           1 * 1024, // 默认:10240个

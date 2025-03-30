@@ -1,12 +1,14 @@
 package TrainDB
 
 import (
+	"fmt"
 	"github.com/kebukeYi/TrainDB/common"
 	"github.com/kebukeYi/TrainDB/lsm"
 	"github.com/kebukeYi/TrainDB/model"
 	"github.com/kebukeYi/TrainDB/utils"
 	"github.com/pkg/errors"
 	"sync"
+	"time"
 )
 
 type TrainKVDB struct {
@@ -164,16 +166,17 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 		if err := db.writeRequest(reqs); err != nil {
 			common.Panic(err)
 		}
+		time.Sleep(1000 * time.Millisecond)
 		<-blockChan
 	}
 
 	for {
-		var r *Request
 		select {
 		case <-closer.CloseSignal:
+			fmt.Println("handleWriteCh exit")
 			for {
 				select {
-				case r = <-db.writeCh:
+				case r := <-db.writeCh:
 					reqs = append(reqs, r)
 				default: // db.writeCh 中没有更多数据, 执行 default 分支;
 					blockChan <- struct{}{}
@@ -181,7 +184,7 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 					return
 				}
 			}
-		case r = <-db.writeCh:
+		case r := <-db.writeCh:
 			reqs = append(reqs, r)
 			reqLen = int64(len(reqs))
 
@@ -201,6 +204,7 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 				go writeRequest(reqs)
 				return
 			default:
+				fmt.Println("db.writeCh is full")
 			}
 		}
 	}

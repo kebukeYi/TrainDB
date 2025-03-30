@@ -20,7 +20,6 @@ var (
 		WorkDir:             vlogTestPath,
 		MemTableSize:        10 << 10, // 10KB; 64 << 20(64MB)
 		NumFlushMemtables:   1,        // 默认：15;
-		SSTableMaxSz:        10 << 10, // 同上
 		BlockSize:           2 * 1024, // 4 * 1024
 		BloomFalsePositive:  0.01,     // 误差率
 		CacheNums:           1 * 1024, // 10240个

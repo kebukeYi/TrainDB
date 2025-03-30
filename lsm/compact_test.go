@@ -18,7 +18,6 @@ var compactOptions = &Options{
 	WorkDir:             compactTestPath,
 	MemTableSize:        10 << 10, // 10KB; 64 << 20(64MB)
 	NumFlushMemtables:   1,        // 默认：15;
-	SSTableMaxSz:        10 << 10, // 同上
 	BlockSize:           2 * 1024, // 4 * 1024
 	BloomFalsePositive:  0.01,     // 误差率
 	CacheNums:           1 * 1024, // 10240个
@@ -43,9 +42,10 @@ func createEmptyTable(lsm *LSM) *table {
 	b := newSSTBuilder(compactOptions)
 	defer b.close()
 	// Add one key so that we can open this table.
-	b.add(model.Entry{Key: model.KeyWithTestTs([]byte("foo"), uint64(1)), Value: []byte{}}, false)
+	entry := model.Entry{Key: model.KeyWithTestTs([]byte("foo"), uint64(1)), Value: []byte{}}
+	b.add(&entry, false)
 	fileName := utils.FileNameSSTable(compactOptions.WorkDir, lsm.levelManger.nextFileID())
-	tab, _ := openTable(&levelsManger{opt: &Options{SSTableMaxSz: compactOptions.SSTableMaxSz}}, fileName, b)
+	tab, _ := openTable(&LevelsManger{opt: &Options{BaseTableSize: compactOptions.BaseTableSize}}, fileName, b)
 	return tab
 }
 
@@ -60,7 +60,7 @@ func createAndSetLevel(lsm *LSM, td []keyValVersion, level int) {
 		// val := model.ValueExt{Value: []byte(item.val), Meta: item.meta}
 		e := model.NewEntry(key, []byte(item.val))
 		e.Meta = item.meta
-		builder.add(e, false)
+		builder.add(&e, false)
 	}
 	fileName := utils.FileNameSSTable(compactOptions.WorkDir, lsm.levelManger.nextFileID())
 	tab, _ := openTable(lsm.levelManger, fileName, builder)

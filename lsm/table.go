@@ -21,13 +21,13 @@ const SSTableName string = ".sst"
 
 type table struct {
 	sst  *SSTable
-	lm   *levelsManger
+	lm   *LevelsManger
 	fid  uint64
 	ref  int32
 	Name string
 }
 
-func openTable(lm *levelsManger, tableName string, builder *sstBuilder) (*table, error) {
+func openTable(lm *LevelsManger, tableName string, builder *sstBuilder) (*table, error) {
 	var (
 		t   *table
 		err error
@@ -44,7 +44,7 @@ func openTable(lm *levelsManger, tableName string, builder *sstBuilder) (*table,
 		t.sst = OpenSStable(&utils.FileOptions{
 			FileName: tableName,
 			Flag:     os.O_CREATE | os.O_RDWR,
-			MaxSz:    int32(lm.opt.SSTableMaxSz),
+			MaxSz:    int32(0),
 			FID:      fid,
 		})
 	}

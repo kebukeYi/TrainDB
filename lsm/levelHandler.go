@@ -13,7 +13,7 @@ type levelHandler struct {
 	tables         []*table
 	totalSize      int64
 	totalStaleSize int64         // 失效数据量
-	lm             *levelsManger // 上层引用
+	lm             *LevelsManger // 上层引用
 }
 
 func (leh *levelHandler) add(r *table) {

@@ -22,7 +22,6 @@ func getTestTableOptions() *Options {
 		WorkDir:             sstTestPath,
 		MemTableSize:        10 << 10, // 10KB; 64 << 20(64MB)
 		NumFlushMemtables:   1,        // 默认：15;
-		SSTableMaxSz:        10 << 10, // 同上
 		BlockSize:           2 * 1024, // 4 * 1024
 		BloomFalsePositive:  0.01,     // 误差率
 		CacheNums:           1 * 1024, // 10240个
@@ -71,7 +70,7 @@ func buildTestTable(t *testing.T, prefix string, n int, opts *Options) *table {
 
 func buildTable(t *testing.T, keyValues [][]string, opts *Options) *table {
 	builder := newSSTBuilder(opts)
-	manger := &levelsManger{opt: opts}
+	manger := &LevelsManger{opt: opts}
 	manger.cache = newLevelsCache(opts)
 	sstID++
 	ssName := utils.FileNameSSTable(manger.opt.WorkDir, sstID)
@@ -83,7 +82,7 @@ func buildTable(t *testing.T, keyValues [][]string, opts *Options) *table {
 			Key:   model.KeyWithTs([]byte(kv[0])),
 			Value: []byte(kv[1]),
 		}
-		builder.add(e, false)
+		builder.add(&e, false)
 	}
 	tbl, _ := openTable(manger, ssName, builder)
 	return tbl

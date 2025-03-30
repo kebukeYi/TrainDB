@@ -9,40 +9,39 @@ import (
 	"testing"
 )
 
-var dbTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/db"
+//var dbTestPath = "/usr/projects_gen_data/goprogendata/trainkvdata/test/db"
 
-//var dbTestPath = "F:\\ProjectsData\\golang\\TrainDB\\test\\db"
+var dbTestPath = "F:\\ProjectsData\\golang\\TrainDB\\test\\db"
 
 var dbTestOpt = &lsm.Options{
 	WorkDir:             dbTestPath,
 	MemTableSize:        10 << 10, // 10KB; 64 << 20(64MB)
 	NumFlushMemtables:   10,       // 默认:15;
-	SSTableMaxSz:        10 << 10, // 同上10KB; 64 << 20(64MB)
 	BlockSize:           2 * 1024, // 4 * 1024;
 	BloomFalsePositive:  0.01,     // 误差率;
 	CacheNums:           1 * 1024, // 10240个
 	ValueThreshold:      1,        // 1B; 1 << 20(1MB)
-	ValueLogMaxEntries:  100,      // 1000000
+	ValueLogMaxEntries:  300,      // 1000000
 	ValueLogFileSize:    1 << 29,  // 512MB; 1<<30-1(1GB);
 	VerifyValueChecksum: false,    // false
 
-	MaxBatchCount: 100,
+	MaxBatchCount: 1000,
 	MaxBatchSize:  10 << 20, // 10 << 20(10MB)
 
-	NumCompactors:       2,       // 4
+	BaseTableSize:       2 << 20, // 2 << 20(2MB) 此参数用于, 合并时,设置生成的 .sst 大小;
+	TableSizeMultiplier: 2,
 	BaseLevelSize:       8 << 20, //8MB; 10 << 20(10MB)
 	LevelSizeMultiplier: 10,
-	TableSizeMultiplier: 2,
-	BaseTableSize:       2 << 20, // 2 << 20(2MB)
-	NumLevelZeroTables:  5,
-	MaxLevelNum:         common.MaxLevelNum,
+	NumCompactors:       2, // 4
+
+	NumLevelZeroTables: 5,
+	MaxLevelNum:        common.MaxLevelNum,
 }
 
 var benchMarkOpt = &lsm.Options{
 	WorkDir:             dbTestPath,
 	MemTableSize:        10 << 20, // 10MB; 64 << 20(64MB)
 	NumFlushMemtables:   10,       // 默认:15;
-	SSTableMaxSz:        10 << 20, // 10MB; 64 << 20(64MB)
 	BlockSize:           4 * 1024, // 4 * 1024;
 	BloomFalsePositive:  0.01,     // 误差率;
 	CacheNums:           1 * 1024, // 10240个

@@ -26,8 +26,8 @@ type compactionPriority struct {
 
 type targets struct {
 	dstLevelId       int
-	levelTargetSSize []int64
-	fileSize         []int64
+	levelTargetSSize []int64 // 对应层中所有 .sst 文件的期望总大小; 用于计算 每层的优先级;
+	fileSize         []int64 // 对应层中单个 .sst 文件的期望大小; 用于设定 合并的生成的目标 sst 文件大小;
 }
 
 type compactDef struct {
@@ -60,7 +60,7 @@ func (cd *compactDef) unlockLevel() {
 }
 
 // 1. 启动压缩
-func (lm *levelsManger) runCompacter(compactorId int, closer *utils.Closer) {
+func (lm *LevelsManger) runCompacter(compactorId int, closer *utils.Closer) {
 	defer closer.Done()
 	randomDelay := time.NewTimer(time.Duration(rand.Intn(1000)) * time.Millisecond)
 	select {
@@ -82,7 +82,7 @@ func (lm *levelsManger) runCompacter(compactorId int, closer *utils.Closer) {
 	}
 }
 
-func (lm *levelsManger) runOnce(compactorId int) bool {
+func (lm *LevelsManger) runOnce(compactorId int) bool {
 	prios := lm.pickCompactLevels()
 	if compactorId == 0 {
 		prios = moveL0toFront(prios)
@@ -117,7 +117,7 @@ func moveL0toFront(prios []compactionPriority) []compactionPriority {
 	return prios
 }
 
-func (lm *levelsManger) run(compactorId int, prio compactionPriority) bool {
+func (lm *LevelsManger) run(compactorId int, prio compactionPriority) bool {
 	// id是协程id, for:p 是将要参与合并的 X层源头层级, 此时 Y层也已经找好了;
 	err := lm.doCompact(compactorId, prio)
 	switch err {
@@ -131,7 +131,7 @@ func (lm *levelsManger) run(compactorId int, prio compactionPriority) bool {
 }
 
 // 2. 寻找压缩目的地 Y(nextLevel) 层
-func (lm *levelsManger) levelTargets() targets {
+func (lm *LevelsManger) levelTargets() targets {
 	adjusted := func(sz int64) int64 {
 		if sz < lm.opt.BaseLevelSize {
 			return lm.opt.BaseLevelSize
@@ -143,28 +143,36 @@ func (lm *levelsManger) levelTargets() targets {
 		fileSize:         make([]int64, len(lm.levelHandlers)),
 	}
 	totalSize := lm.lastLevel().getTotalSize()
-	// 从最底层开始向上扫描;
+	// 从下层向上递减;
 	for i := len(lm.levelHandlers) - 1; i > 0; i-- {
 		levelTargetSize := adjusted(totalSize)
 		dst.levelTargetSSize[i] = levelTargetSize
 		if dst.dstLevelId == 0 && levelTargetSize <= lm.opt.BaseLevelSize {
 			dst.dstLevelId = i
 		}
+		//        | |        BaseLevelSize
+		//        | |        BaseLevelSize
+		//       /    \      totalSize/100
+		//     /        \    totalSize/10
+		//   /            \  totalSize
 		totalSize = totalSize / int64(lm.opt.LevelSizeMultiplier)
 	}
 
-	tableTargetSize := lm.opt.BaseTableSize
+	baseTableSize := lm.opt.BaseTableSize
+	// 从上往下递增; 计算文件大小的目的是, 可设定在合并时 生成的 sst 文件大小;
 	for i := 0; i < len(lm.levelHandlers); i++ {
 		if i == 0 {
 			dst.fileSize[i] = lm.opt.MemTableSize
 		} else if i <= dst.dstLevelId {
 			// 小于等于 Y 目标层的文件 都是一致的,形成下面的形状;
-			//   | |
-			//   | |
-			//  /   \
-			dst.fileSize[i] = tableTargetSize
+			//    ||    MemTableSize
+			//   |  |   BaseTableSize
+			//   |  |   BaseTableSize
+			//  /    \  BaseTableSize * TableSizeMultiplier
+			dst.fileSize[i] = baseTableSize
 		} else {
-			dst.fileSize[i] *= int64(lm.opt.LevelSizeMultiplier)
+			baseTableSize *= int64(lm.opt.TableSizeMultiplier)
+			dst.fileSize[i] = baseTableSize
 		}
 	}
 
@@ -185,7 +193,7 @@ func (lm *levelsManger) levelTargets() targets {
 }
 
 // 3. 为每一层创建一个压缩信息
-func (lm *levelsManger) pickCompactLevels() (prios []compactionPriority) {
+func (lm *LevelsManger) pickCompactLevels() (prios []compactionPriority) {
 	levelTargets := lm.levelTargets()
 	addPriority := func(level int, score float64) {
 		prio := compactionPriority{
@@ -237,7 +245,7 @@ func (lm *levelsManger) pickCompactLevels() (prios []compactionPriority) {
 }
 
 // 4. 开始遍历寻找 X层 中适合参与压缩的table, l0 -> lY ; l0->l0; lmax->lmax; lx -> lx+1;
-func (lm *levelsManger) doCompact(id int, prio compactionPriority) error {
+func (lm *LevelsManger) doCompact(id int, prio compactionPriority) error {
 	if prio.dst.dstLevelId == 0 {
 		prio.dst = lm.levelTargets()
 	}
@@ -257,7 +265,7 @@ func (lm *levelsManger) doCompact(id int, prio compactionPriority) error {
 	} else {
 		cd.nextLevel = cd.thisLevel
 		if !cd.thisLevel.isLastLevel() {
-			cd.nextLevel = lm.levelHandlers[prio.dst.dstLevelId+1]
+			cd.nextLevel = lm.levelHandlers[prio.levelId+1]
 		}
 		if !lm.findTables(&cd) {
 			return common.ErrfillTables
@@ -277,14 +285,14 @@ func (lm *levelsManger) doCompact(id int, prio compactionPriority) error {
 
 // 4.1. l0 -> ly
 // 4.2. l0 -> l0
-func (lm *levelsManger) findTablesL0(cd *compactDef) bool {
+func (lm *LevelsManger) findTablesL0(cd *compactDef) bool {
 	if ok := lm.findTablesL0ToDstLevel(cd); ok {
 		return true
 	}
 	return lm.findTablesL0ToL0(cd)
 }
 
-func (lm *levelsManger) findTablesL0ToDstLevel(cd *compactDef) bool {
+func (lm *LevelsManger) findTablesL0ToDstLevel(cd *compactDef) bool {
 	if cd.prior.adjusted > 0.0 && cd.prior.adjusted < 1.0 {
 		return false
 	}
@@ -322,7 +330,7 @@ func (lm *levelsManger) findTablesL0ToDstLevel(cd *compactDef) bool {
 	return lm.compactIngStatus.compareAndAdd(thisAndNextLevelRLocked{}, *cd)
 }
 
-func (lm *levelsManger) findTablesL0ToL0(cd *compactDef) bool {
+func (lm *LevelsManger) findTablesL0ToL0(cd *compactDef) bool {
 	if cd.compactorId != 0 {
 		return false
 	}
@@ -374,7 +382,7 @@ func (lm *levelsManger) findTablesL0ToL0(cd *compactDef) bool {
 
 // 4.3. lmax -> lmax
 // 4.4. lx -> lx+1
-func (lm *levelsManger) findTables(cd *compactDef) bool {
+func (lm *LevelsManger) findTables(cd *compactDef) bool {
 	cd.lockLevel()
 	defer cd.unlockLevel()
 	tables := make([]*table, cd.thisLevel.numTables())
@@ -421,7 +429,7 @@ func (lm *levelsManger) findTables(cd *compactDef) bool {
 	return false
 }
 
-func (lm *levelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool {
+func (lm *LevelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool {
 	sortedTables := make([]*table, len(tables))
 	copy(sortedTables, tables)
 	lm.sortByStaleDataSize(tables, cd)
@@ -430,7 +438,7 @@ func (lm *levelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool
 	}
 
 	cd.nextTables = []*table{}
-	collectBotTables := func(t *table, needSz int64) {
+	collectNextTables := func(t *table, needSz int64) {
 		idx := sort.Search(len(tables), func(i int) bool {
 			return model.CompareKeyNoTs(tables[i].sst.minKey, t.sst.minKey) >= 0
 		})
@@ -443,7 +451,7 @@ func (lm *levelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool
 				break
 			}
 			cd.nextTables = append(cd.nextTables, tables[idx])
-			cd.nextRange.extend(getKeyRange(t))
+			cd.nextRange.extend(getKeyRange(tables[idx]))
 			idx++
 		}
 	}
@@ -465,13 +473,13 @@ func (lm *levelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool
 			continue
 		}
 
-		cd.nextTables = []*table{t}
+		cd.thisTables = []*table{t}
 
 		needFileSize := cd.dst.fileSize[cd.thisLevel.levelID]
 		if t.Size() >= needFileSize {
 			break
 		}
-		collectBotTables(t, needFileSize)
+		collectNextTables(t, needFileSize)
 		if !lm.compactIngStatus.compareAndAdd(thisAndNextLevelRLocked{}, *cd) {
 			cd.nextTables = cd.nextTables[:0]
 			cd.nextRange = keyRange{}
@@ -479,13 +487,14 @@ func (lm *levelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool
 		}
 		return true
 	}
+
 	if len(cd.thisTables) == 0 {
 		return false
 	}
 	return lm.compactIngStatus.compareAndAdd(thisAndNextLevelRLocked{}, *cd)
 }
 
-func (lm *levelsManger) sortByStaleDataSize(tables []*table, cd *compactDef) {
+func (lm *LevelsManger) sortByStaleDataSize(tables []*table, cd *compactDef) {
 	if len(tables) == 0 || cd.nextLevel == nil {
 		return
 	}
@@ -494,7 +503,7 @@ func (lm *levelsManger) sortByStaleDataSize(tables []*table, cd *compactDef) {
 	})
 }
 
-func (lm *levelsManger) runCompactDef(id int, level int, cd compactDef) error {
+func (lm *LevelsManger) runCompactDef(id int, level int, cd compactDef) error {
 	if len(cd.dst.fileSize) == 0 {
 		return errors.New("#runCompactDef() FileSizes cannot be zero. Targets are not set.")
 	}
@@ -549,7 +558,7 @@ func (lm *levelsManger) runCompactDef(id int, level int, cd compactDef) error {
 	return nil
 }
 
-func (lm *levelsManger) compactBuildTables(level int, cd compactDef) ([]*table, func() error, error) {
+func (lm *LevelsManger) compactBuildTables(level int, cd compactDef) ([]*table, func() error, error) {
 	thisTables := cd.thisTables
 	nextTables := cd.nextTables
 	options := &model.Options{IsAsc: true}
@@ -612,7 +621,7 @@ func (lm *levelsManger) compactBuildTables(level int, cd compactDef) ([]*table, 
 	}, nil
 }
 
-func (lm *levelsManger) subCompact(iterator model.Iterator, kr keyRange, cd compactDef,
+func (lm *LevelsManger) subCompact(iterator model.Iterator, kr keyRange, cd compactDef,
 	inflightBuilders *utils.Throttle, res chan<- *table) {
 	discardStats := make(map[uint32]int64)
 	defer func() {
@@ -729,6 +738,7 @@ func (lm *levelsManger) subCompact(iterator model.Iterator, kr keyRange, cd comp
 		}(builder)
 	} // for over
 }
+
 func IsDeletedOrExpired(e *model.Entry) bool {
 	if e.Meta&common.BitDelete > 0 {
 		return true
@@ -741,7 +751,7 @@ func IsDeletedOrExpired(e *model.Entry) bool {
 	}
 	return e.ExpiresAt <= uint64(time.Now().Unix())
 }
-func (lm *levelsManger) updateDiscardStats(discardStats map[uint32]int64) {
+func (lm *LevelsManger) updateDiscardStats(discardStats map[uint32]int64) {
 	select {
 	case *lm.lsm.option.DiscardStatsCh <- discardStats:
 	}
@@ -761,7 +771,7 @@ func tablesToString(tables []*table) []string {
 	res = append(res, " . ")
 	return res
 }
-func (lm *levelsManger) addSplits(cd *compactDef) {
+func (lm *LevelsManger) addSplits(cd *compactDef) {
 	cd.splits = cd.splits[:0]
 	width := int(math.Ceil(float64(len(cd.nextTables)) / 5.0))
 	if width < 3 {
@@ -911,7 +921,7 @@ func (lcs *levelCompactStatus) removeRange(dst keyRange) bool {
 	out := lcs.ranges[:0]
 	var found bool
 	for _, r := range lcs.ranges {
-		if !r.overlapWith(dst) {
+		if !r.equals(dst) {
 			out = append(out, r)
 		} else {
 			found = true

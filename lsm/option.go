@@ -5,9 +5,9 @@ import (
 )
 
 type Options struct {
-	WorkDir           string // 工作数据目录;
-	MemTableSize      int64  // 内存表最大限制;
-	SSTableMaxSz      int64  // SSSTable 最大限制,同上;
+	WorkDir      string // 工作数据目录;
+	MemTableSize int64  // 内存表最大限制;
+	// SSTableMaxSz      int64  // SSSTable 最大限制,同上;
 	NumFlushMemtables int    // 刷盘队列大小;
 	BlockSize         uint32 // 数据块持久化时的大小;
 
@@ -46,7 +46,6 @@ func GetLSMDefaultOpt(dirPath string) *Options {
 		NumFlushMemtables:   6,
 		BaseTableSize:       2 << 20,
 		BaseLevelSize:       10 << 20,
-		SSTableMaxSz:        64 << 20,
 		LevelSizeMultiplier: 10,
 		TableSizeMultiplier: 2,
 		MaxLevelNum:         7,

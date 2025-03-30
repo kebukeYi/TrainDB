@@ -22,35 +22,41 @@ func OpenMmapFile(fileName string, flag int, maxSz int32) (*MmapFile, error) {
 		return nil, errors.Wrapf(err, "unable to open: %s", fileName)
 	}
 	writable := true
-	var fileSize int32
 	if flag == os.O_RDONLY {
 		writable = false
 	}
-	fileInfo, err := fd.Stat()
-	if err == nil && fileInfo != nil && fileInfo.Size() > 0 {
-		maxSz = int32(fileInfo.Size())
-	}
 
-	if maxSz > 0 && fileInfo.Size() == 0 {
+	fi, err := fd.Stat()
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot stat file: %s", fileName)
+	}
+	fileSize := fi.Size()
+	if maxSz > 0 && fileSize == 0 {
 		// If file is empty, truncate it to sz.
 		if err := fd.Truncate(int64(maxSz)); err != nil {
 			return nil, errors.Wrapf(err, "error while truncation")
 		}
-		fileSize = maxSz
+		fileSize = int64(maxSz)
+		err = errors.New("Create a new file")
 	}
-	buf, err := mmap.Mmap(fd, writable, int64(maxSz))
+
+	// fmt.Printf("Mmaping file: %s with writable: %v filesize: %d\n", fd.Name(), writable, fileSize)
+	buf, err := mmap.Mmap(fd, writable, fileSize) // Mmap up to file size.
 	if err != nil {
 		return nil, errors.Wrapf(err, "while mmapping %s with size: %d", fd.Name(), fileSize)
 	}
 
 	if fileSize == 0 {
 		dir, _ := filepath.Split(fileName)
-		go SyncDir(dir)
+		if err = SyncDir(dir); err != nil {
+			return nil, err
+		}
 	}
+
 	return &MmapFile{
 		Buf:    buf,
 		Fd:     fd,
-		BufLen: int64(maxSz),
+		BufLen: fileSize,
 	}, err
 }
 

@@ -68,7 +68,7 @@ func (vlog *ValueLog) Open(replayFn model.LogEntry) error {
 			FileName: vlog.fpath(fid),
 			Dir:      vlog.DirPath,
 			Path:     vlog.DirPath,
-			MaxSz:    2 * vlog.Db.Opt.ValueLogFileSize,
+			MaxSz:    vlog.Db.Opt.ValueLogFileSize,
 		}); err != nil {
 			return errors.Wrapf(err, "Open existing file: %q", lf.FileName())
 		}
@@ -398,7 +398,7 @@ func (vlog *ValueLog) createVlogFile(fid uint32) (*file.VLogFile, error) {
 		FileName: fpath,
 		Dir:      vlog.DirPath,
 		Path:     vlog.DirPath,
-		MaxSz:    2 * vlog.Db.Opt.ValueLogFileSize,
+		MaxSz:    vlog.Db.Opt.ValueLogFileSize,
 	}); err != nil {
 		return nil, err
 	}

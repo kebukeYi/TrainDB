@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 )
 
-type levelsManger struct {
+type LevelsManger struct {
 	maxFID           atomic.Uint64   // sst 已经分配出去的最大fid,只要创建了 memoryTable 就算已分配;
 	levelHandlers    []*levelHandler // 每层的处理器
 	opt              *Options
@@ -19,13 +19,13 @@ type levelsManger struct {
 	compactIngStatus *compactIngStatus
 }
 
-func (lm *levelsManger) nextFileID() uint64 {
+func (lm *LevelsManger) nextFileID() uint64 {
 	id := lm.maxFID.Add(1)
 	return id
 }
 
-func (lsm *LSM) InitLevelManger(opt *Options) *levelsManger {
-	lm := &levelsManger{
+func (lsm *LSM) InitLevelManger(opt *Options) *LevelsManger {
+	lm := &LevelsManger{
 		lsm: lsm,
 		opt: opt,
 	}
@@ -39,12 +39,12 @@ func (lsm *LSM) InitLevelManger(opt *Options) *levelsManger {
 	return lm
 }
 
-func (lm *levelsManger) loadManifestFile() (err error) {
+func (lm *LevelsManger) loadManifestFile() (err error) {
 	lm.manifestFile, err = OpenManifestFile(&utils.FileOptions{Dir: lm.opt.WorkDir})
 	return err
 }
 
-func (lm *levelsManger) build() error {
+func (lm *LevelsManger) build() error {
 	lm.levelHandlers = make([]*levelHandler, lm.opt.MaxLevelNum)
 	for i := 0; i < lm.opt.MaxLevelNum; i++ {
 		lm.levelHandlers[i] = &levelHandler{
@@ -86,11 +86,11 @@ func (lm *levelsManger) build() error {
 	return nil
 }
 
-func (lm *levelsManger) lastLevel() *levelHandler {
+func (lm *LevelsManger) lastLevel() *levelHandler {
 	return lm.levelHandlers[len(lm.levelHandlers)-1]
 }
 
-func (lm *levelsManger) iterators(opt *model.Options) []model.Iterator {
+func (lm *LevelsManger) iterators(opt *model.Options) []model.Iterator {
 	iters := make([]model.Iterator, 0)
 	for _, handler := range lm.levelHandlers {
 		iters = append(iters, handler.iterators(opt)...)
@@ -98,7 +98,7 @@ func (lm *levelsManger) iterators(opt *model.Options) []model.Iterator {
 	return iters
 }
 
-func (lm *levelsManger) Get(keyTs []byte) (model.Entry, error) {
+func (lm *LevelsManger) Get(keyTs []byte) (model.Entry, error) {
 	var (
 		entry model.Entry
 		err   error
@@ -115,7 +115,7 @@ func (lm *levelsManger) Get(keyTs []byte) (model.Entry, error) {
 	return entry, common.ErrKeyNotFound
 }
 
-func (lm *levelsManger) checkOverlap(tables []*table, lev int) bool {
+func (lm *LevelsManger) checkOverlap(tables []*table, lev int) bool {
 	kr := getKeyRange(tables...) // 给定的 table 区间
 	for i, lh := range lm.levelHandlers {
 		if i < lev { // 跳过 低于本层的;
@@ -132,7 +132,7 @@ func (lm *levelsManger) checkOverlap(tables []*table, lev int) bool {
 	return false
 }
 
-func (lm *levelsManger) flush(imm *memoryTable) (err error) {
+func (lm *LevelsManger) flush(imm *memoryTable) (err error) {
 	fid := imm.wal.Fid()
 	sstName := utils.FileNameSSTable(lm.opt.WorkDir, fid)
 
@@ -160,7 +160,7 @@ func (lm *levelsManger) flush(imm *memoryTable) (err error) {
 	return nil
 }
 
-func (lm *levelsManger) close() error {
+func (lm *LevelsManger) close() error {
 	if err := lm.manifestFile.Close(); err != nil {
 		return err
 	}

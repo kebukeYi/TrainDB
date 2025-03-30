@@ -11,16 +11,17 @@ import (
 )
 
 func TestOpenSStable(t *testing.T) {
-	tableName := "/user/trainFS/temp/nameNode1/task/00005.sst"
+	//tableName := "/user/trainFS/temp/nameNode1/task/00005.sst"
+	tableName := "F:\\ProjectsData\\golang\\TrainDB\\test\\db\\00001.sst"
 	options := GetLSMDefaultOpt("")
 	fid := utils.FID(tableName)
-	levelManger := &levelsManger{}
+	levelManger := &LevelsManger{}
 	levelManger.cache = newLevelsCache(options)
 	table := &table{lm: levelManger, fid: fid, Name: strconv.FormatUint(fid, 10) + SSTableName}
 	table.sst = OpenSStable(&utils.FileOptions{
 		FileName: tableName,
 		Flag:     os.O_CREATE | os.O_RDWR,
-		MaxSz:    int32(options.SSTableMaxSz),
+		MaxSz:    0,
 		FID:      table.fid,
 	})
 	table.IncrRef()

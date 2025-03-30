@@ -13,7 +13,7 @@ type LSM struct {
 	sync.RWMutex
 	memoryTable    *memoryTable
 	immemoryTables []*memoryTable
-	levelManger    *levelsManger
+	levelManger    *LevelsManger
 	option         *Options
 	maxMemFID      uint32
 

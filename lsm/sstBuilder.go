@@ -70,6 +70,7 @@ func (h *entryHeader) decode(buf []byte) {
 }
 
 func newSSTBuilderWithSSTableSize(opt *Options, size int64) *sstBuilder {
+	size = 2 * size
 	return &sstBuilder{
 		opt:     opt,
 		sstSize: size,
@@ -79,7 +80,7 @@ func newSSTBuilderWithSSTableSize(opt *Options, size int64) *sstBuilder {
 func newSSTBuilder(opt *Options) *sstBuilder {
 	return &sstBuilder{
 		opt:     opt,
-		sstSize: opt.SSTableMaxSz,
+		sstSize: opt.BaseTableSize,
 	}
 }
 
@@ -196,7 +197,7 @@ func (ssb *sstBuilder) keyDiff(key []byte) []byte {
 	return key[i:]
 }
 
-func (ssb *sstBuilder) flush(lm *levelsManger, tableName string) (t *table, err error) {
+func (ssb *sstBuilder) flush(lm *LevelsManger, tableName string) (t *table, err error) {
 	bd := ssb.done()
 	fid := utils.FID(tableName)
 	t = &table{lm: lm, fid: fid, Name: strconv.FormatUint(fid, 10) + SSTableName}
