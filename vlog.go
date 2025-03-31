@@ -276,7 +276,7 @@ func (vlog *ValueLog) Write(reqs []*Request) error {
 			req.ValPtr = append(req.ValPtr, &p)
 			writteNum++
 			if int32(buf.Len()) > vlog.Db.Opt.ValueLogFileSize {
-				if err := flushToFile(); err != nil {
+				if err = flushToFile(); err != nil {
 					return err
 				}
 			}
@@ -291,6 +291,7 @@ func (vlog *ValueLog) Write(reqs []*Request) error {
 			}
 		}
 	}
+
 	return toWrite()
 }
 
@@ -771,5 +772,5 @@ func (r *Request) Reset() {
 	r.ValPtr = r.ValPtr[:0]
 	r.Wg = sync.WaitGroup{}
 	r.Err = nil
-	r.ref = 0
+	atomic.StoreInt32(&r.ref, 0)
 }

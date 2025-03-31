@@ -1,14 +1,12 @@
 package TrainDB
 
 import (
-	"fmt"
 	"github.com/kebukeYi/TrainDB/common"
 	"github.com/kebukeYi/TrainDB/lsm"
 	"github.com/kebukeYi/TrainDB/model"
 	"github.com/kebukeYi/TrainDB/utils"
 	"github.com/pkg/errors"
 	"sync"
-	"time"
 )
 
 type TrainKVDB struct {
@@ -135,9 +133,10 @@ func (db *TrainKVDB) BatchSet(entries []*model.Entry) error {
 	return request.Wait()
 }
 
-// SendToWriteCh 发送数据到 db.writeCh 通道中; vlog 组件调用;
-// 1. Re重放: openVlog() -> go vlog.flushDiscardStats(); 监听并收集vlog文件的GC信息, 必要时将序列化统计表数据, 发送到 db 的写通道中, 以便重启时可以直接获得;
-// 2. GC重写: db.batchSet(); 批处理(加速vlog GC重写速度), 将多个 []entry 写到指定通道中;
+// SendToWriteCh 发送数据到 db.writeCh 通道中;
+// 1. vlog.Re重放: openVlog() -> go vlog.flushDiscardStats(); 监听并收集vlog文件的GC信息, 必要时将序列化统计表数据, 发送到 db 的写通道中, 以便重启时可以直接获得;
+// 2. vlog.GC重写: db.batchSet(); 批处理(加速vlog GC重写速度), 将多个 []entry 写到指定通道中;
+// 3. db.set(): 串行化写流程,避免vlog和wal加锁;
 func (db *TrainKVDB) SendToWriteCh(entries []*model.Entry) (*Request, error) {
 	var count, size int64
 	for _, entry := range entries {
@@ -160,20 +159,18 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 	defer closer.Done()
 	var reqLen int64
 	reqs := make([]*Request, 0, 10)
-	blockChan := make(chan struct{}, 1)
+	blockChan := make(chan struct{}, 1) //限制:每次只允许一个协程去写数据;
 
 	writeRequest := func(reqs []*Request) {
-		if err := db.writeRequest(reqs); err != nil {
+		if err := db.WriteRequest(reqs); err != nil {
 			common.Panic(err)
 		}
-		time.Sleep(1000 * time.Millisecond)
 		<-blockChan
 	}
 
 	for {
 		select {
 		case <-closer.CloseSignal:
-			fmt.Println("handleWriteCh exit")
 			for {
 				select {
 				case r := <-db.writeCh:
@@ -188,7 +185,7 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 			reqs = append(reqs, r)
 			reqLen = int64(len(reqs))
 
-			if reqLen >= 3*common.KVWriteChRequestCapacity {
+			if reqLen >= common.KVWriteChRequestCapacity {
 				blockChan <- struct{}{}
 				go writeRequest(reqs)
 				reqs = make([]*Request, 0, 10)
@@ -204,7 +201,13 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 				go writeRequest(reqs)
 				return
 			default:
-				fmt.Println("db.writeCh is full")
+			}
+		default:
+			if len(reqs) > 0 {
+				blockChan <- struct{}{}
+				go writeRequest(reqs)
+				reqs = make([]*Request, 0, 10)
+				reqLen = 0
 			}
 		}
 	}
@@ -214,7 +217,7 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 // 1.各个vlog文件的失效数据统计表
 // 2.vlog GC重写的entry[]
 // 写完 vlog 后, 再逐一写到 lsm 中
-func (db *TrainKVDB) writeRequest(reqs []*Request) error {
+func (db *TrainKVDB) WriteRequest(reqs []*Request) error {
 	if len(reqs) == 0 {
 		return nil
 	}
@@ -253,7 +256,7 @@ func (db *TrainKVDB) writeToLSM(req *Request) error {
 	}
 	for i, entry := range req.Entries {
 		if db.ShouldWriteValueToLSM(*entry) {
-			// nothing to do
+			// nothing to do.
 		} else {
 			entry.Meta |= common.BitValuePointer
 			entry.Value = req.ValPtr[i].Encode()
@@ -302,4 +305,13 @@ func (db *TrainKVDB) Close() error {
 	}
 	// fmt.Println("db.Close exit.")
 	return nil
+}
+
+func BuildRequest(entries []*model.Entry) *Request {
+	request := RequestPool.Get().(*Request)
+	request.Reset()
+	request.Entries = entries
+	request.Wg.Add(1)
+	request.IncrRef()
+	return request
 }

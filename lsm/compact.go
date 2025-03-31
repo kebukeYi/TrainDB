@@ -75,6 +75,7 @@ func (lm *LevelsManger) runCompacter(compactorId int, closer *utils.Closer) {
 		select {
 		case <-ticker.C:
 			lm.runOnce(compactorId)
+			fmt.Printf("[compactorId:%d] Compaction start.\n", compactorId)
 		case <-closer.CloseSignal:
 			ticker.Stop()
 			return

@@ -48,7 +48,7 @@ func (lsm *LSM) Put(entry model.Entry) (err error) {
 	}
 
 	if int64(lsm.memoryTable.wal.Size())+int64(EstimateWalEncodeSize(&entry)) > lsm.option.MemTableSize {
-		fmt.Printf("memtable is full, rotate memtable when entry key:%s | meta:%d |value: %s ;\n",
+		fmt.Printf("memtable is full, rotate memtable when cur entry key:%s | meta:%d | value: %s ;\n",
 			model.ParseKey(entry.Key), entry.Meta, entry.Value)
 		lsm.Rotate()
 	}
@@ -99,12 +99,11 @@ func (lsm *LSM) GetSkipListFromMemTable() *skl.SkipList {
 
 func (lsm *LSM) Rotate() {
 	lsm.Lock()
-	lsm.immemoryTables = append(lsm.immemoryTables, lsm.memoryTable)
 	im := lsm.memoryTable
+	lsm.immemoryTables = append(lsm.immemoryTables, lsm.memoryTable)
 	lsm.memoryTable = lsm.NewMemoryTable()
 	lsm.Unlock()
 	lsm.flushMemTable <- im
-
 }
 
 func (lsm *LSM) StartFlushMemTable(closer *utils.Closer) {
@@ -123,13 +122,13 @@ func (lsm *LSM) StartFlushMemTable(closer *utils.Closer) {
 	}
 	for {
 		select {
+		case im := <-lsm.flushMemTable:
+			flushIMemoryTable(im)
 		case <-closer.CloseSignal:
 			for im := range lsm.flushMemTable {
 				flushIMemoryTable(im)
 			}
 			return
-		case im := <-lsm.flushMemTable:
-			flushIMemoryTable(im)
 		}
 	}
 }
