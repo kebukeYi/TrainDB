@@ -188,6 +188,7 @@ func TestReStart(t *testing.T) {
 		iter.Next()
 	}
 	fmt.Println("======================over====================================")
+	select {}
 }
 
 func TestWriteRequest(t *testing.T) {

@@ -200,15 +200,15 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 			case <-closer.CloseSignal:
 				go writeRequest(reqs)
 				return
-			default:
+				// default:
 			}
-		default:
-			if len(reqs) > 0 {
-				blockChan <- struct{}{}
-				go writeRequest(reqs)
-				reqs = make([]*Request, 0, 10)
-				reqLen = 0
-			}
+			//default:
+			//	if len(reqs) > 0 {
+			//		blockChan <- struct{}{}
+			//		go writeRequest(reqs)
+			//		reqs = make([]*Request, 0, 10)
+			//		reqLen = 0
+			//	}
 		}
 	}
 }
