@@ -19,7 +19,7 @@ type LevelsManger struct {
 	compactIngStatus *compactIngStatus
 }
 
-func (lm *LevelsManger) nextFileID() uint64 {
+func (lm *LevelsManger) NextFileID() uint64 {
 	id := lm.maxFID.Add(1)
 	return id
 }
@@ -50,7 +50,7 @@ func (lm *LevelsManger) build() error {
 		lm.levelHandlers[i] = &levelHandler{
 			mux:            sync.RWMutex{},
 			levelID:        i,
-			tables:         make([]*table, 0),
+			tables:         make([]*Table, 0),
 			totalSize:      0,
 			totalStaleSize: 0,
 			lm:             lm,
@@ -71,7 +71,7 @@ func (lm *LevelsManger) build() error {
 		if fid > maxFID {
 			maxFID = fid
 		}
-		t, _ := openTable(lm, filePathName, nil)
+		t, _ := OpenTable(lm, filePathName, nil)
 		lm.levelHandlers[tableInfo.LevelID].add(t)
 		lm.levelHandlers[tableInfo.LevelID].addSize(t)
 	}
@@ -115,7 +115,7 @@ func (lm *LevelsManger) Get(keyTs []byte) (model.Entry, error) {
 	return entry, common.ErrKeyNotFound
 }
 
-func (lm *LevelsManger) checkOverlap(tables []*table, lev int) bool {
+func (lm *LevelsManger) checkOverlap(tables []*Table, lev int) bool {
 	kr := getKeyRange(tables...) // 给定的 table 区间
 	for i, lh := range lm.levelHandlers {
 		if i < lev { // 跳过 低于本层的;
@@ -136,16 +136,16 @@ func (lm *LevelsManger) flush(imm *memoryTable) (err error) {
 	fid := imm.wal.Fid()
 	sstName := utils.FileNameSSTable(lm.opt.WorkDir, fid)
 
-	builder := newSSTBuilder(lm.opt)
+	builder := NewSSTBuilder(lm.opt)
 	skipListIterator := imm.skipList.NewSkipListIterator(strconv.FormatUint(fid, 10) + MemTableName)
-	defer skipListIterator.Close() // 涉及到 immemoryTable的清除和相关 wal的清理;
+	defer skipListIterator.Close() // 涉及到 immemoryTable 的清除和相关 wal 的清理;
 	for skipListIterator.Rewind(); skipListIterator.Valid(); skipListIterator.Next() {
 		entry := skipListIterator.Item().Item
-		builder.add(&entry, false)
+		builder.Add(&entry, false)
 	}
 
 	// 此时磁盘中已经生成 .sst 文件;
-	t, _ := openTable(lm, sstName, builder)
+	t, _ := OpenTable(lm, sstName, builder)
 	// 向manifest 中添加, 添加失败了呢?
 	// 假设5.wal 刚转化成 5.sst, 那么5.wal理应被删除掉;但是和5.wal绑定的跳表正在被引用,因此无法直接删除掉5.wal;
 	// 随后 系统突然宕机关闭, 重启时, 会先加载 .sst文件, 然后再加载.wal; 那么就会出现 5.wal 和 5.sst 的重叠;

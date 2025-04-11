@@ -27,8 +27,8 @@ type Entry struct {
 	ValThreshold int64
 }
 
-func NewEntry(key, val []byte) Entry {
-	return Entry{
+func NewEntry(key, val []byte) *Entry {
+	return &Entry{
 		Key:   key,
 		Value: val,
 	}
@@ -94,6 +94,7 @@ func (e *Entry) IsDeleteOrExpired() bool {
 	if (e.Meta & common.BitDelete) > 0 {
 		return true
 	}
+
 	if e.Version == -1 {
 		return true
 	}

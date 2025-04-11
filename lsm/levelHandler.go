@@ -10,19 +10,19 @@ import (
 type levelHandler struct {
 	mux            sync.RWMutex
 	levelID        int
-	tables         []*table
+	tables         []*Table
 	totalSize      int64
 	totalStaleSize int64         // 失效数据量
 	lm             *LevelsManger // 上层引用
 }
 
-func (leh *levelHandler) add(r *table) {
+func (leh *levelHandler) add(r *Table) {
 	leh.mux.Lock()
 	defer leh.mux.Unlock()
 	leh.tables = append(leh.tables, r)
 }
 
-func (leh *levelHandler) addSize(t *table) {
+func (leh *levelHandler) addSize(t *Table) {
 	leh.totalSize += t.Size()
 	leh.totalStaleSize += int64(t.getStaleDataSize())
 }
@@ -33,7 +33,7 @@ func (leh *levelHandler) getTotalSize() int64 {
 	return leh.totalSize
 }
 
-func (leh *levelHandler) subtractSize(t *table) {
+func (leh *levelHandler) subtractSize(t *Table) {
 	leh.totalSize -= t.Size()
 	leh.totalStaleSize -= int64(t.getStaleDataSize())
 }
@@ -78,8 +78,8 @@ func (leh *levelHandler) searchLnSST(key []byte) (model.Entry, error) {
 	return model.Entry{Version: -1}, common.ErrKeyNotFound
 }
 
-// 默认从 首部 开始查询, 找到第一个大于等于key的sst, 除了l0层之外, 其他层的 table 都是递增规律;
-func (leh *levelHandler) getTable(key []byte) *table {
+// 默认从 首部 开始查询, 找到第一个大于等于key的sst, 除了l0层之外, 其他层的 Table 都是递增规律;
+func (leh *levelHandler) getTable(key []byte) *Table {
 	idx := sort.Search(len(leh.tables), func(i int) bool {
 		minKey := leh.tables[i].sst.MinKey()
 		cmp := model.CompareKeyNoTs(minKey, key)
@@ -113,7 +113,7 @@ func (leh *levelHandler) Sort() {
 
 type levelHandlerRLocked struct{}
 
-// 在本层所有的 table 中找到涉及到给定的 kr 区间的 right,left左右边界;
+// 在本层所有的 Table 中找到涉及到给定的 kr 区间的 right,left左右边界;
 func (leh *levelHandler) findOverLappingTables(_ levelHandlerRLocked, kr keyRange) (lIndex int, rIndex int) {
 	if len(kr.left) == 0 || len(kr.right) == 0 {
 		return 0, 0
@@ -127,14 +127,14 @@ func (leh *levelHandler) findOverLappingTables(_ levelHandlerRLocked, kr keyRang
 	return left, right
 }
 
-func (leh *levelHandler) updateTable(toDel, toAdd []*table) error {
+func (leh *levelHandler) updateTable(toDel, toAdd []*Table) error {
 	leh.mux.Lock()
 	defer leh.mux.Unlock()
 	toDelMap := make(map[uint64]bool, len(toDel))
 	for _, t := range toDel {
 		toDelMap[t.fid] = true
 	}
-	newTables := make([]*table, 0)
+	newTables := make([]*Table, 0)
 	for _, t := range leh.tables {
 		if _, ok := toDelMap[t.fid]; ok {
 			leh.subtractSize(t)
@@ -157,14 +157,14 @@ func (leh *levelHandler) updateTable(toDel, toAdd []*table) error {
 	return decrRefs(toDel)
 }
 
-func (leh *levelHandler) deleteTable(toDel []*table) error {
+func (leh *levelHandler) deleteTable(toDel []*Table) error {
 	leh.mux.Lock()
 	defer leh.mux.Unlock()
 	toDelMap := make(map[uint64]bool, len(toDel))
 	for _, t := range toDel {
 		toDelMap[t.fid] = true
 	}
-	newTables := make([]*table, 0)
+	newTables := make([]*Table, 0)
 	for _, t := range leh.tables {
 		if _, ok := toDelMap[t.fid]; ok {
 			leh.subtractSize(t)

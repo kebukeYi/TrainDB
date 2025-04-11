@@ -42,7 +42,7 @@ func TestWAL_WalDecode(t *testing.T) {
 	reader := model.NewHashReader(w.file.Fd)
 	var readAt uint32 = 0
 	for {
-		var entry model.Entry
+		var entry *model.Entry
 		entry, readAt = w.Read(reader)
 		if readAt > 0 {
 			fmt.Printf("entry: key:%s val:%s meta:%d version:%d \n",
@@ -62,7 +62,7 @@ func TestWAL_Write(t *testing.T) {
 			Meta:      1,
 			ExpiresAt: uint64(time.Now().Unix()),
 		}
-		err := w.Write(entry)
+		err := w.Write(&entry)
 		if err != nil {
 			fmt.Printf("write failed, err: %v\n", err)
 		}
@@ -72,7 +72,7 @@ func TestWAL_Write(t *testing.T) {
 	reader := model.NewHashReader(w.file.Fd)
 	var readAt uint32 = 0
 	for {
-		var entry model.Entry
+		var entry *model.Entry
 		entry, readAt = w.Read(reader)
 		if readAt > 0 {
 			fmt.Printf("entry: key:%s val:%s meta:%d exp:%d \n",

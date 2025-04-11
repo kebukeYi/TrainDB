@@ -37,8 +37,8 @@ type compactDef struct {
 	thisLevel   *levelHandler
 	nextLevel   *levelHandler
 
-	thisTables []*table
-	nextTables []*table
+	thisTables []*Table
+	nextTables []*Table
 
 	thisRange keyRange
 	nextRange keyRange
@@ -119,7 +119,9 @@ func moveL0toFront(prios []compactionPriority) []compactionPriority {
 }
 
 func (lm *LevelsManger) run(compactorId int, prio compactionPriority) bool {
-	// id是协程id, for:p 是将要参与合并的 X层源头层级, 此时 Y层也已经找好了;
+	// id是协程id, for:p 是将要参与合并的 X层源头层级, 此时目标 Y层 已经找好了;
+	// X层: l0层
+	// X层: ln层
 	err := lm.doCompact(compactorId, prio)
 	switch err {
 	case nil:
@@ -248,6 +250,7 @@ func (lm *LevelsManger) pickCompactLevels() (prios []compactionPriority) {
 // 4. 开始遍历寻找 X层 中适合参与压缩的table, l0 -> lY ; l0->l0; lmax->lmax; lx -> lx+1;
 func (lm *LevelsManger) doCompact(id int, prio compactionPriority) error {
 	if prio.dst.dstLevelId == 0 {
+		// 重新统计一次 现有所有 .sst 文件大小情况, 以及期望大小;
 		prio.dst = lm.levelTargets()
 	}
 
@@ -304,7 +307,7 @@ func (lm *LevelsManger) findTablesL0ToDstLevel(cd *compactDef) bool {
 		return false
 	}
 
-	var out []*table
+	var out []*Table
 	var kr keyRange
 	for _, t := range xTables {
 		tkr := getKeyRange(t)
@@ -319,7 +322,7 @@ func (lm *LevelsManger) findTablesL0ToDstLevel(cd *compactDef) bool {
 	cd.thisTables = out
 
 	left, right := cd.nextLevel.findOverLappingTables(levelHandlerRLocked{}, cd.thisRange)
-	cd.nextTables = make([]*table, right-left)
+	cd.nextTables = make([]*Table, right-left)
 	copy(cd.nextTables, cd.nextLevel.tables[left:right])
 
 	if len(cd.nextTables) == 0 {
@@ -349,7 +352,7 @@ func (lm *LevelsManger) findTablesL0ToL0(cd *compactDef) bool {
 	defer lm.compactIngStatus.mux.Unlock()
 
 	top := cd.thisLevel.tables
-	var out []*table
+	var out []*Table
 	now := time.Now()
 	for _, t := range top {
 		if t.Size() >= 2*cd.dst.fileSize[0] {
@@ -386,7 +389,7 @@ func (lm *LevelsManger) findTablesL0ToL0(cd *compactDef) bool {
 func (lm *LevelsManger) findTables(cd *compactDef) bool {
 	cd.lockLevel()
 	defer cd.unlockLevel()
-	tables := make([]*table, cd.thisLevel.numTables())
+	tables := make([]*Table, cd.thisLevel.numTables())
 	copy(tables, cd.thisLevel.tables)
 	if len(tables) == 0 {
 		return false
@@ -402,18 +405,22 @@ func (lm *LevelsManger) findTables(cd *compactDef) bool {
 		if lm.compactIngStatus.overlapsWith(cd.thisLevel.levelID, cd.thisRange) {
 			continue
 		}
-		cd.thisTables = []*table{t}
+		cd.thisTables = []*Table{t}
 
+		// 查询目标层中是否含有与当前层的table存在重叠;
 		left, right := cd.nextLevel.findOverLappingTables(levelHandlerRLocked{}, cd.thisRange)
-		cd.nextTables = make([]*table, right-left)
+		cd.nextTables = make([]*Table, right-left)
 		copy(cd.nextTables, cd.nextLevel.tables[left:right])
 
 		if len(cd.nextTables) == 0 {
-			cd.nextTables = []*table{}
+			cd.nextTables = []*Table{}
 			cd.nextRange = cd.thisRange
 			if !lm.compactIngStatus.compareAndAdd(thisAndNextLevelRLocked{}, *cd) {
+				// cas 失败代表: 说明当前表参与合并了, 跳过当前t;
 				continue
 			}
+			// cas 成功代表:说明当前表没有参与合并,但是为什么直接返回了呢?
+			// 答: 当下一层没有重叠的表时，这个表可以被移动到下一层中;
 			return true
 		}
 
@@ -430,16 +437,16 @@ func (lm *LevelsManger) findTables(cd *compactDef) bool {
 	return false
 }
 
-func (lm *LevelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool {
-	sortedTables := make([]*table, len(tables))
+func (lm *LevelsManger) findMaxLevelTables(tables []*Table, cd *compactDef) bool {
+	sortedTables := make([]*Table, len(tables))
 	copy(sortedTables, tables)
 	lm.sortByStaleDataSize(tables, cd)
 	if len(sortedTables) > 0 && sortedTables[0].getStaleDataSize() == 0 {
 		return false
 	}
 
-	cd.nextTables = []*table{}
-	collectNextTables := func(t *table, needSz int64) {
+	cd.nextTables = []*Table{}
+	collectNextTables := func(t *Table, needSz int64) {
 		idx := sort.Search(len(tables), func(i int) bool {
 			return model.CompareKeyNoTs(tables[i].sst.minKey, t.sst.minKey) >= 0
 		})
@@ -474,7 +481,7 @@ func (lm *LevelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool
 			continue
 		}
 
-		cd.thisTables = []*table{t}
+		cd.thisTables = []*Table{t}
 
 		needFileSize := cd.dst.fileSize[cd.thisLevel.levelID]
 		if t.Size() >= needFileSize {
@@ -495,7 +502,7 @@ func (lm *LevelsManger) findMaxLevelTables(tables []*table, cd *compactDef) bool
 	return lm.compactIngStatus.compareAndAdd(thisAndNextLevelRLocked{}, *cd)
 }
 
-func (lm *LevelsManger) sortByStaleDataSize(tables []*table, cd *compactDef) {
+func (lm *LevelsManger) sortByStaleDataSize(tables []*Table, cd *compactDef) {
 	if len(tables) == 0 || cd.nextLevel == nil {
 		return
 	}
@@ -506,7 +513,7 @@ func (lm *LevelsManger) sortByStaleDataSize(tables []*table, cd *compactDef) {
 
 func (lm *LevelsManger) runCompactDef(id int, level int, cd compactDef) error {
 	if len(cd.dst.fileSize) == 0 {
-		return errors.New("#runCompactDef() FileSizes cannot be zero. Targets are not set.")
+		return errors.New("#runCompactDef() FileSizes cannot be zero. Targets are not set")
 	}
 	timeStart := time.Now()
 	common.CondPanic(len(cd.splits) != 0, errors.New("runCompactDef, len(cd.splits) != 0"))
@@ -548,18 +555,21 @@ func (lm *LevelsManger) runCompactDef(id int, level int, cd compactDef) error {
 	}
 
 	from := append(tablesToString(cd.thisTables), tablesToString(cd.nextTables)...)
+
 	to := tablesToString(buildTables)
 
-	if dur := time.Since(timeStart); dur > 2*time.Second {
-		fmt.Printf("[go_routeid %d]expensive LOG Compact %d->%d (%d, %d -> %d tables with %d splits)."+" [%s] -> [%s], took %v\n",
-			id, thisLevel.levelID, nextLevel.levelID, len(cd.thisTables), len(cd.nextTables),
-			len(buildTables), len(cd.splits), strings.Join(from, " "), strings.Join(to, " "),
+	if dur := time.Since(timeStart); dur >= 1*time.Second {
+		fmt.Printf("[GoRouteid:%d] Compact Input: lx:%d[%d tables] + ly:%d[%d tables]  with %d splits. -> Out: ly:%d[new %d tables]. tableName: [%s] -> [%s], took %v\n",
+			id, thisLevel.levelID, len(cd.thisTables),
+			nextLevel.levelID, len(cd.nextTables), len(cd.splits),
+			nextLevel.levelID, len(buildTables),
+			strings.Join(from, " "), strings.Join(to, " "),
 			dur.Round(time.Millisecond))
 	}
 	return nil
 }
 
-func (lm *LevelsManger) compactBuildTables(level int, cd compactDef) ([]*table, func() error, error) {
+func (lm *LevelsManger) compactBuildTables(level int, cd compactDef) ([]*Table, func() error, error) {
 	thisTables := cd.thisTables
 	nextTables := cd.nextTables
 	options := &model.Options{IsAsc: true}
@@ -575,7 +585,7 @@ func (lm *LevelsManger) compactBuildTables(level int, cd compactDef) ([]*table, 
 		return append(iters, NewConcatIterator(nextTables, options))
 	}
 
-	res := make(chan *table, 3)
+	res := make(chan *Table, 3)
 
 	inflightBuilders := utils.NewThrottle(8 + len(cd.splits))
 
@@ -585,14 +595,14 @@ func (lm *LevelsManger) compactBuildTables(level int, cd compactDef) ([]*table, 
 		}
 		go func(kr keyRange) {
 			defer inflightBuilders.Done(nil)
-			iterators := newIterator()
+			iterators := newIterator() // 全量表参与迭代
 			iterator := NewMergeIterator(iterators, false)
-			defer iterator.Close()                                 // 逐个解开 table 引用
-			lm.subCompact(iterator, kr, cd, inflightBuilders, res) //其中有阻塞操作,导致函数无法正常返回;
+			defer iterator.Close() // 逐个解开 table 引用
+			lm.subCompact(iterator, kr, cd, inflightBuilders, res)
 		}(kr)
 	}
 
-	var newTables []*table
+	var newTables []*Table
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -623,7 +633,7 @@ func (lm *LevelsManger) compactBuildTables(level int, cd compactDef) ([]*table, 
 }
 
 func (lm *LevelsManger) subCompact(iterator model.Iterator, kr keyRange, cd compactDef,
-	inflightBuilders *utils.Throttle, res chan<- *table) {
+	inflightBuilders *utils.Throttle, res chan<- *Table) {
 	discardStats := make(map[uint32]int64)
 	defer func() {
 		go lm.updateDiscardStats(discardStats) // 重新开一个go协程,让其去阻塞,不要耽搁函数返回;
@@ -695,7 +705,7 @@ func (lm *LevelsManger) subCompact(iterator model.Iterator, kr keyRange, cd comp
 				}
 			}
 		} // for over
-		// 额外情况: 假如当前 sst 中只含有一个 key, 那么也需要进行保存;
+		// 额外情况: 假如当前 .sst 中只含有一个 entry , 那么也需要进行保存;
 		if lastEntry.Key != nil {
 			tableKr.right = model.SafeCopy(tableKr.right, lastEntry.Key)
 			builderAdd(builder, lastEntry)
@@ -710,6 +720,7 @@ func (lm *LevelsManger) subCompact(iterator model.Iterator, kr keyRange, cd comp
 
 	for iterator.Valid() {
 		key := iterator.Item().Item.Key
+		// 末尾 keyRange 最右侧 kr.right == 0
 		if len(kr.right) > 0 && model.CompareKeyNoTs(key, kr.right) >= 0 {
 			break
 		}
@@ -728,9 +739,9 @@ func (lm *LevelsManger) subCompact(iterator model.Iterator, kr keyRange, cd comp
 
 		go func(builder *sstBuilder) {
 			defer inflightBuilders.Done(nil)
-			newFID := lm.nextFileID()
+			newFID := lm.NextFileID()
 			ssName := utils.FileNameSSTable(lm.opt.WorkDir, newFID)
-			ntl, err := openTable(lm, ssName, builder)
+			ntl, err := OpenTable(lm, ssName, builder)
 			if err != nil {
 				common.Err(err)
 				panic(err)
@@ -757,14 +768,14 @@ func (lm *LevelsManger) updateDiscardStats(discardStats map[uint32]int64) {
 	case *lm.lsm.option.DiscardStatsCh <- discardStats:
 	}
 }
-func iteratorsReversed(tables []*table, options *model.Options) []model.Iterator {
+func iteratorsReversed(tables []*Table, options *model.Options) []model.Iterator {
 	out := make([]model.Iterator, 0)
 	for i := len(tables) - 1; i >= 0; i-- {
 		out = append(out, tables[i].NewTableIterator(options))
 	}
 	return out
 }
-func tablesToString(tables []*table) []string {
+func tablesToString(tables []*Table) []string {
 	var res []string
 	for _, t := range tables {
 		res = append(res, fmt.Sprintf("%05d", t.fid))
@@ -774,7 +785,7 @@ func tablesToString(tables []*table) []string {
 }
 func (lm *LevelsManger) addSplits(cd *compactDef) {
 	cd.splits = cd.splits[:0]
-	width := int(math.Ceil(float64(len(cd.nextTables)) / 5.0))
+	width := len(cd.nextTables) / 2.0
 	if width < 3 {
 		width = 3
 	}
@@ -791,14 +802,14 @@ func (lm *LevelsManger) addSplits(cd *compactDef) {
 			return
 		}
 		if i%width == width-1 {
-			right := model.KeyWithTs(model.ParseKey(t.sst.MaxKey()))
+			right := t.sst.MaxKey()
 			addRange(right)
 		}
 	}
 }
 
 // 5. 更新元信息
-func buildChangeSet(cd *compactDef, tables []*table) pb.ManifestChangeSet {
+func buildChangeSet(cd *compactDef, tables []*Table) pb.ManifestChangeSet {
 	var changees []*pb.ManifestChange
 	for _, t := range tables {
 		changees = append(changees, newCreateChange(t.fid, cd.nextLevel.levelID))
@@ -947,10 +958,11 @@ type keyRange struct {
 	size  int64 // size is used for Key splits.
 }
 
-func getKeyRange(tables ...*table) keyRange {
+func getKeyRange(tables ...*Table) keyRange {
 	if len(tables) == 0 {
 		return keyRange{}
 	}
+	// 此时的key 是带有 ts 时间戳;
 	minKey := tables[0].sst.MinKey()
 	maxKey := tables[0].sst.MaxKey()
 	for i := 1; i < len(tables); i++ {
@@ -962,8 +974,8 @@ func getKeyRange(tables ...*table) keyRange {
 		}
 	}
 	return keyRange{
-		left:  model.KeyWithTs(model.ParseKey(minKey)),
-		right: model.KeyWithTs(model.ParseKey(maxKey)),
+		left:  minKey,
+		right: maxKey,
 	}
 }
 func (key keyRange) isEmpty() bool {

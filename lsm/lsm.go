@@ -1,7 +1,6 @@
 package lsm
 
 import (
-	"fmt"
 	"github.com/kebukeYi/TrainDB/common"
 	"github.com/kebukeYi/TrainDB/model"
 	"github.com/kebukeYi/TrainDB/skl"
@@ -13,7 +12,7 @@ type LSM struct {
 	sync.RWMutex
 	memoryTable    *memoryTable
 	immemoryTables []*memoryTable
-	levelManger    *LevelsManger
+	LevelManger    *LevelsManger
 	option         *Options
 	maxMemFID      uint32
 
@@ -30,7 +29,7 @@ func NewLSM(opt *Options, closer *utils.Closer) *LSM {
 		flushMemTable: make(chan *memoryTable, opt.NumFlushMemtables),
 	}
 	// 1. 更新 lm.maxID
-	lsm.levelManger = lsm.InitLevelManger(opt)
+	lsm.LevelManger = lsm.InitLevelManger(opt)
 
 	go lsm.StartFlushMemTable(closer) // lock
 
@@ -42,14 +41,13 @@ func NewLSM(opt *Options, closer *utils.Closer) *LSM {
 	return lsm
 }
 
-func (lsm *LSM) Put(entry model.Entry) (err error) {
+func (lsm *LSM) Put(entry *model.Entry) (err error) {
 	if entry.Key == nil || len(entry.Key) == 0 || len(entry.Key) <= 8 {
 		return common.ErrEmptyKey
 	}
 
-	if int64(lsm.memoryTable.wal.Size())+int64(EstimateWalEncodeSize(&entry)) > lsm.option.MemTableSize {
-		fmt.Printf("memtable is full, rotate memtable when cur entry key:%s | meta:%d | value: %s ;\n",
-			model.ParseKey(entry.Key), entry.Meta, entry.Value)
+	if int64(lsm.memoryTable.wal.Size())+int64(EstimateWalEncodeSize(entry)) > lsm.option.MemTableSize {
+		//fmt.Printf("memtable is full, rotate memtable when cur entry key:%s | meta:%d | value: %s ;\n", model.ParseKey(entry.Key), entry.Meta, entry.Value)
 		lsm.Rotate()
 	}
 
@@ -82,7 +80,7 @@ func (lsm *LSM) Get(keyTs []byte) (model.Entry, error) {
 			return entry, err
 		}
 	}
-	return lsm.levelManger.Get(keyTs)
+	return lsm.LevelManger.Get(keyTs)
 }
 
 func (lsm *LSM) MemSize() int64 {
@@ -112,7 +110,7 @@ func (lsm *LSM) StartFlushMemTable(closer *utils.Closer) {
 		if im == nil {
 			return
 		}
-		if err := lsm.levelManger.flush(im); err != nil {
+		if err := lsm.LevelManger.flush(im); err != nil {
 			common.Panic(err)
 		}
 		lsm.Lock()
@@ -141,7 +139,7 @@ func (lsm *LSM) StartCompacter(closer *utils.Closer) {
 	n := lsm.option.NumCompactors
 	closer.Add(n - 1)
 	for coroutineID := 0; coroutineID < n; coroutineID++ {
-		go lsm.levelManger.runCompacter(coroutineID, closer)
+		go lsm.LevelManger.runCompacter(coroutineID, closer)
 	}
 }
 
@@ -156,7 +154,7 @@ func (lsm *LSM) Close() error {
 			return err
 		}
 	}
-	if err := lsm.levelManger.close(); err != nil {
+	if err := lsm.LevelManger.close(); err != nil {
 		return err
 	}
 	return nil

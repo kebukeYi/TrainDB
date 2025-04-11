@@ -77,7 +77,7 @@ func newSSTBuilderWithSSTableSize(opt *Options, size int64) *sstBuilder {
 	}
 }
 
-func newSSTBuilder(opt *Options) *sstBuilder {
+func NewSSTBuilder(opt *Options) *sstBuilder {
 	return &sstBuilder{
 		opt:     opt,
 		sstSize: opt.BaseTableSize,
@@ -85,15 +85,15 @@ func newSSTBuilder(opt *Options) *sstBuilder {
 }
 
 func (ssb *sstBuilder) AddKey(e *model.Entry) {
-	ssb.add(e, false)
+	ssb.Add(e, false)
 }
 
 func (ssb *sstBuilder) AddStaleKey(e *model.Entry) {
 	ssb.staleDataSize += len(e.Key) + len(e.Value) + 4 /* entry offset */ + 4 /* header size */
-	ssb.add(e, true)
+	ssb.Add(e, true)
 }
 
-func (ssb *sstBuilder) add(e *model.Entry, isStale bool) {
+func (ssb *sstBuilder) Add(e *model.Entry, isStale bool) {
 	key := e.Key
 	val := model.ValueExt{
 		Meta:      e.Meta,
@@ -197,10 +197,10 @@ func (ssb *sstBuilder) keyDiff(key []byte) []byte {
 	return key[i:]
 }
 
-func (ssb *sstBuilder) flush(lm *LevelsManger, tableName string) (t *table, err error) {
+func (ssb *sstBuilder) flush(lm *LevelsManger, tableName string) (t *Table, err error) {
 	bd := ssb.done()
 	fid := utils.FID(tableName)
-	t = &table{lm: lm, fid: fid, Name: strconv.FormatUint(fid, 10) + SSTableName}
+	t = &Table{lm: lm, fid: fid, Name: strconv.FormatUint(fid, 10) + SSTableName}
 	t.sst = OpenSStable(&utils.FileOptions{
 		FileName: tableName,
 		Flag:     os.O_CREATE | os.O_RDWR,

@@ -251,7 +251,7 @@ func (skipList *SkipList) Get(userKeyTs []byte) model.ValueExt {
 	val.Version = model.ParseTsVersion(nearKeyTs)
 	return val
 }
-func (skipList *SkipList) Put(e model.Entry) {
+func (skipList *SkipList) Put(e *model.Entry) {
 	key, v := e.Key, model.ValueExt{
 		Meta:      e.Meta,
 		Value:     e.Value,

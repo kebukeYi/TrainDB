@@ -17,7 +17,7 @@ func TestOpenSStable(t *testing.T) {
 	fid := utils.FID(tableName)
 	levelManger := &LevelsManger{}
 	levelManger.cache = newLevelsCache(options)
-	table := &table{lm: levelManger, fid: fid, Name: strconv.FormatUint(fid, 10) + SSTableName}
+	table := &Table{lm: levelManger, fid: fid, Name: strconv.FormatUint(fid, 10) + SSTableName}
 	table.sst = OpenSStable(&utils.FileOptions{
 		FileName: tableName,
 		Flag:     os.O_CREATE | os.O_RDWR,

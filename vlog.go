@@ -261,7 +261,7 @@ func (vlog *ValueLog) Write(reqs []*Request) error {
 		req.ValPtr = req.ValPtr[:0]
 		var writteNum int
 		for _, entry := range req.Entries {
-			if vlog.Db.ShouldWriteValueToLSM(*entry) {
+			if vlog.Db.ShouldWriteValueToLSM(entry) {
 				req.ValPtr = append(req.ValPtr, &model.ValuePtr{})
 				continue
 			}

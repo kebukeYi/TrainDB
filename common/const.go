@@ -24,7 +24,7 @@ const (
 // meta
 const (
 	BitDelete       byte = 1 << 0 //1 Set if the key has been deleted.
-	BitValuePointer byte = 1 << 1 //2 Set if the value is NOT stored directly next to key.
+	BitValuePointer byte = 2 << 1 //2 Set if the value is NOT stored directly next to key.
 )
 
 var (

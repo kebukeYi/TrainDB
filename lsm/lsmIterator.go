@@ -20,19 +20,19 @@ func (lsm *LSM) NewLsmIterator(opt *model.Options) []model.Iterator {
 	for _, imemoryTable := range lsm.immemoryTables {
 		iter.iters = append(iter.iters, imemoryTable.skipList.NewSkipListIterator(imemoryTable.name))
 	}
-	iter.iters = append(iter.iters, lsm.levelManger.iterators(opt)...)
+	iter.iters = append(iter.iters, lsm.LevelManger.iterators(opt)...)
 	return iter.iters
 }
 
 type ConcatIterator struct {
-	tables []*table
+	tables []*Table
 	iters  []model.Iterator
 	idx    int
 	curIer model.Iterator
 	opt    *model.Options
 }
 
-func NewConcatIterator(tables []*table, opt *model.Options) *ConcatIterator {
+func NewConcatIterator(tables []*Table, opt *model.Options) *ConcatIterator {
 	for i := 0; i < len(tables); i++ {
 		tables[i].IncrRef()
 	}

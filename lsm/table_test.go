@@ -55,7 +55,7 @@ func key(prefix string, i int) string {
 	return prefix + fmt.Sprintf("%04d", i)
 }
 
-func buildTestTable(t *testing.T, prefix string, n int, opts *Options) *table {
+func buildTestTable(t *testing.T, prefix string, n int, opts *Options) *Table {
 	if opts.BlockSize == 0 {
 		opts.BlockSize = 4 * 1024
 	}
@@ -68,8 +68,8 @@ func buildTestTable(t *testing.T, prefix string, n int, opts *Options) *table {
 	return buildTable(t, keyValues, opts)
 }
 
-func buildTable(t *testing.T, keyValues [][]string, opts *Options) *table {
-	builder := newSSTBuilder(opts)
+func buildTable(t *testing.T, keyValues [][]string, opts *Options) *Table {
+	builder := NewSSTBuilder(opts)
 	manger := &LevelsManger{opt: opts}
 	manger.cache = newLevelsCache(opts)
 	sstID++
@@ -82,9 +82,9 @@ func buildTable(t *testing.T, keyValues [][]string, opts *Options) *table {
 			Key:   model.KeyWithTs([]byte(kv[0])),
 			Value: []byte(kv[1]),
 		}
-		builder.add(&e, false)
+		builder.Add(&e, false)
 	}
-	tbl, _ := openTable(manger, ssName, builder)
+	tbl, _ := OpenTable(manger, ssName, builder)
 	return tbl
 }
 
@@ -187,7 +187,7 @@ func TestConcatIteratorOneTable(t *testing.T) {
 	}, opts)
 	defer func() { require.NoError(t, tbl.DecrRef()) }()
 
-	it := NewConcatIterator([]*table{tbl}, &model.Options{IsAsc: true})
+	it := NewConcatIterator([]*Table{tbl}, &model.Options{IsAsc: true})
 	defer it.Close()
 
 	it.Rewind()
@@ -210,7 +210,7 @@ func TestConcatIterator(t *testing.T) {
 	defer func() { require.NoError(t, tbl3.DecrRef()) }()
 
 	{
-		it := NewConcatIterator([]*table{tbl, tbl2, tbl3}, &model.Options{IsAsc: true})
+		it := NewConcatIterator([]*Table{tbl, tbl2, tbl3}, &model.Options{IsAsc: true})
 		defer it.Close()
 		it.Rewind()
 		require.True(t, it.Valid())
@@ -239,7 +239,7 @@ func TestConcatIterator(t *testing.T) {
 	}
 
 	{
-		it := NewConcatIterator([]*table{tbl, tbl2, tbl3}, &model.Options{IsAsc: false})
+		it := NewConcatIterator([]*Table{tbl, tbl2, tbl3}, &model.Options{IsAsc: false})
 		defer it.Close()
 		it.Rewind()
 		require.True(t, it.Valid())
@@ -294,7 +294,7 @@ func TestMergingIterator(t *testing.T) {
 	}
 
 	it1 := tbl1.NewTableIterator(&model.Options{IsAsc: true})
-	it2 := NewConcatIterator([]*table{tbl2}, &model.Options{IsAsc: true})
+	it2 := NewConcatIterator([]*Table{tbl2}, &model.Options{IsAsc: true})
 	it := NewMergeIterator([]model.Iterator{it1, it2}, false)
 	defer it.Close()
 

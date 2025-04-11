@@ -8,7 +8,7 @@ import (
 
 func TestEmptyBuilder(t *testing.T) {
 	opts := &Options{BloomFalsePositive: 0.1}
-	b := newSSTBuilder(opts)
+	b := NewSSTBuilder(opts)
 	require.Equal(t, []byte{}, b.Finish())
 }
 
@@ -24,7 +24,6 @@ func TestBaseKey(t *testing.T) {
 	}
 	fmt.Println("slice1:", entry.key) // 输出: slice1: [1 2 3 4 5]
 
-	// 第二行代码
 	if len(entry.val) == 0 {
 		entry.val = append(entry.val[:0], 4, 5)
 	}

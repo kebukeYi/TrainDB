@@ -54,14 +54,16 @@ func TestLSM_Get(t *testing.T) {
 
 	// Test key found in memoryTable
 	keyWithTs := model.KeyWithTs(key)
-	lsm.memoryTable.Put(model.Entry{Key: keyWithTs, Value: value})
+	newEntry := model.NewEntry(keyWithTs, value)
+	lsm.memoryTable.Put(newEntry)
 	entry, err := lsm.Get(keyWithTs)
 	fmt.Printf("key:%s, val:%s\n", entry.Key, entry.Value)
 
 	// Test key found in imemoryTables
 	lsm.immemoryTables = append(lsm.immemoryTables, lsm.NewMemoryTable())
 	keyWithTs = model.KeyWithTs([]byte("newKey"))
-	lsm.immemoryTables[0].Put(model.Entry{Key: keyWithTs, Value: value})
+	e := model.NewEntry(keyWithTs, value)
+	lsm.immemoryTables[0].Put(e)
 	entry, err = lsm.Get(keyWithTs)
 	fmt.Printf("newKey:%s, val:%s\n", entry.Key, entry.Value)
 }
@@ -70,14 +72,12 @@ func TestLSM_Put(t *testing.T) {
 	clearDir(lsmOptions.WorkDir)
 	lsm := NewLSM(lsmOptions, utils.NewCloser(1))
 	defer lsm.Close()
-	entry := model.Entry{Key: model.KeyWithTs([]byte("testKey")), Value: []byte("testValue")}
-
+	newEntry := model.NewEntry(model.KeyWithTs([]byte("testKey")), []byte("testValue"))
 	// Test successful Put
-	success := lsm.Put(entry)
+	success := lsm.Put(newEntry)
 	common.Panic(success)
 
-	// Test Put failure due to error in memoryTable Put.
-	success = lsm.Put(entry) // 更新操作
+	newEntry.Value = []byte("testValue2")
+	success = lsm.Put(newEntry) // 更新操作
 	common.Panic(success)
-
 }

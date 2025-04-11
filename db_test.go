@@ -1,12 +1,15 @@
 package TrainDB
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/kebukeYi/TrainDB/common"
 	"github.com/kebukeYi/TrainDB/lsm"
 	"github.com/kebukeYi/TrainDB/model"
 	"github.com/kebukeYi/TrainDB/utils"
+	"github.com/stretchr/testify/require"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -93,7 +96,7 @@ func TestAPI(t *testing.T) {
 		//val := make([]byte, 64<<20+1)
 		e := model.NewEntry([]byte(key), []byte(val))
 		e.Version = 1
-		if err := db.Set(&e); err != nil {
+		if err := db.Set(e); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -125,7 +128,7 @@ func TestAPI(t *testing.T) {
 		//val := make([]byte, 10<<20+1)
 		e := model.NewEntry([]byte(key), []byte(val))
 		e.Version = 3
-		if err := db.Set(&e); err != nil {
+		if err := db.Set(e); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -215,7 +218,7 @@ func TestWriteRequest(t *testing.T) {
 		e := model.NewEntry([]byte(key), []byte(val))
 		e.Version = 1
 		e.Key = model.KeyWithTs(e.Key)
-		request := BuildRequest([]*model.Entry{&e})
+		request := BuildRequest([]*model.Entry{e})
 		if err := db.WriteRequest([]*Request{request}); err != nil {
 			t.Fatal(err)
 		}
@@ -238,7 +241,7 @@ func TestWriteRequest(t *testing.T) {
 		e := model.NewEntry([]byte(key), nil)
 		e.Key = model.KeyWithTs(e.Key)
 		e.Meta = common.BitDelete
-		if err := db.WriteRequest([]*Request{BuildRequest([]*model.Entry{&e})}); err != nil {
+		if err := db.WriteRequest([]*Request{BuildRequest([]*model.Entry{e})}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -252,7 +255,7 @@ func TestWriteRequest(t *testing.T) {
 		e := model.NewEntry([]byte(key), []byte(val))
 		e.Version = 3
 		e.Key = model.KeyWithTs(e.Key)
-		if err := db.WriteRequest([]*Request{BuildRequest([]*model.Entry{&e})}); err != nil {
+		if err := db.WriteRequest([]*Request{BuildRequest([]*model.Entry{e})}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -281,4 +284,103 @@ func TestWriteRequest(t *testing.T) {
 		iter.Next()
 	}
 	time.Sleep(8 * time.Second)
+}
+
+func TestConcurrentWrite(t *testing.T) {
+	runBadgerTest(t, nil, func(t *testing.T, db *TrainKVDB) {
+		// Not a benchmark. Just a simple test for concurrent writes.
+		n := 20
+		m := 500
+		var wg sync.WaitGroup
+		for i := 0; i < n; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				for j := 0; j < m; j++ {
+					entry := model.NewEntry([]byte(fmt.Sprintf("k%05d_%08d", i, j)),
+						[]byte(fmt.Sprintf("v%05d_%08d", i, j)))
+					entry.Meta = byte(j % 127)
+					err := db.Set(entry)
+					if err != nil {
+						panic(err)
+						return
+					}
+				}
+			}(i)
+		}
+
+		wg.Wait()
+
+		t.Log("Starting iteration")
+
+		it := db.NewDBIterator(&model.Options{IsAsc: true})
+		defer it.Close()
+		var i, j int
+		it.Rewind()
+		for ; it.Valid(); it.Next() {
+			item := it.Item().Item
+			k := item.Key
+			k = model.ParseKey(k)
+			if k == nil {
+				break // end of iteration.
+			}
+
+			require.EqualValues(t, fmt.Sprintf("k%05d_%08d", i, j), string(k))
+			v := getItemValue(t, &item)
+			require.EqualValues(t, fmt.Sprintf("v%05d_%08d", i, j), string(v))
+			require.Equal(t, item.Meta, byte(j%127))
+			j++
+			if j == m {
+				i++
+				j = 0
+			}
+		}
+
+		require.EqualValues(t, n, i)
+		require.EqualValues(t, 0, j)
+	})
+}
+
+func runBadgerTest(t *testing.T, opts *lsm.Options, test func(t *testing.T, db *TrainKVDB)) {
+	if opts == nil {
+		opts = &lsm.Options{}
+		opts = lsm.GetLSMDefaultOpt("")
+	}
+	var err error
+	var dir string
+	if opts.WorkDir == "" {
+		dir, err = os.MkdirTemp("F:\\ProjectsData\\golang\\TrainDB\\test\\db", "runBadgerTest-")
+		opts.WorkDir = dir
+	} else {
+		dir = opts.WorkDir
+	}
+	clearDir(dir)
+	require.NoError(t, err)
+	db, err, _ := Open(opts)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+	test(t, db)
+}
+
+// createTableWithRange function is used in TestCompactionFilePicking. It creates
+// a table with key starting from start and ending with end.
+func CreateTableWithRange(t *testing.T, db *TrainKVDB, start, end int) *lsm.Table {
+	builder := lsm.NewSSTBuilder(db.Opt)
+	nums := []int{start, end}
+	for _, i := range nums {
+		Key := make([]byte, 8)
+		binary.BigEndian.PutUint64(Key[:], uint64(i))
+		Key = model.KeyWithTs(Key)
+		val := []byte(fmt.Sprintf("%d", i))
+		e := &model.Entry{Key: Key, Value: val}
+		builder.Add(e, false)
+	}
+
+	fileID := db.Lsm.LevelManger.NextFileID()
+	nameSSTable := utils.FileNameSSTable(db.Opt.WorkDir, fileID)
+	table, err := lsm.OpenTable(db.Lsm.LevelManger, nameSSTable, builder)
+	require.NoError(t, err)
+	return table
 }

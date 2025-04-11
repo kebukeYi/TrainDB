@@ -255,20 +255,20 @@ func (db *TrainKVDB) writeToLSM(req *Request) error {
 		return errors.Errorf("Ptrs and Entries don't match: %+v", req)
 	}
 	for i, entry := range req.Entries {
-		if db.ShouldWriteValueToLSM(*entry) {
+		if db.ShouldWriteValueToLSM(entry) {
 			// nothing to do.
 		} else {
 			entry.Meta |= common.BitValuePointer
 			entry.Value = req.ValPtr[i].Encode()
 		}
-		if err := db.Lsm.Put(*entry); err != nil {
+		if err := db.Lsm.Put(entry); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (db *TrainKVDB) ShouldWriteValueToLSM(entry model.Entry) bool {
+func (db *TrainKVDB) ShouldWriteValueToLSM(entry *model.Entry) bool {
 	return len(entry.Value) < db.Opt.ValueThreshold
 }
 

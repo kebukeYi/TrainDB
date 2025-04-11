@@ -69,9 +69,9 @@ func BenchmarkNormalEntry(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		key := []byte(fmt.Sprintf("key=%d", i))
 		//valSize := 5 + 1 // val: 6B
-		//valSize := 127 + 1 // val: 12B
+		valSize := 127 + 1 // val: 12B
 		//valSize := 10<<20 + 1 // val: 10.01MB
-		valSize := 64<<20 + 1 // val: 64.01MB
+		//valSize := 64<<20 + 1 // val: 64.01MB
 		err := traindb.Set(model.BuildBigEntry(key, uint64(valSize)))
 		assert.Nil(b, err)
 	}
@@ -100,7 +100,7 @@ func BenchmarkWriteRequest(b *testing.B) {
 		//val := make([]byte, 10<<20+1)
 		e := model.NewEntry([]byte(key), []byte(val))
 		e.Key = model.KeyWithTs(e.Key)
-		request := TrainDB.BuildRequest([]*model.Entry{&e})
+		request := TrainDB.BuildRequest([]*model.Entry{e})
 		if err := traindb.WriteRequest([]*TrainDB.Request{request}); err != nil {
 			assert.Nil(b, err)
 		} else {

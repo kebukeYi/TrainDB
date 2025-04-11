@@ -25,13 +25,13 @@ func main() {
 
 	// Set key.
 	e := model.NewEntry([]byte(key), []byte(val))
-	if err := db.Set(&e); err != nil {
+	if err := db.Set(e); err != nil {
 		panic(err)
 	}
 
 	// To test a valid key for the following iterator.
 	newE := model.NewEntry([]byte("newName"), []byte("validVal"))
-	if err := db.Set(&newE); err != nil {
+	if err := db.Set(newE); err != nil {
 		panic(err)
 	}
 

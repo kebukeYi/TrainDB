@@ -26,7 +26,7 @@ type memoryTable struct {
 }
 
 func (lsm *LSM) NewMemoryTable() *memoryTable {
-	newFid := lsm.levelManger.nextFileID()
+	newFid := lsm.LevelManger.NextFileID()
 	walFileOpt := &utils.FileOptions{
 		Dir:      lsm.option.WorkDir,
 		Flag:     os.O_CREATE | os.O_RDWR,
@@ -65,7 +65,7 @@ func (m *memoryTable) Get(keyTs []byte) (model.Entry, error) {
 	return e, nil
 }
 
-func (m *memoryTable) Put(e model.Entry) error {
+func (m *memoryTable) Put(e *model.Entry) error {
 	if err := m.wal.Write(e); err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (lsm *LSM) recovery() (*memoryTable, []*memoryTable) {
 		return fids[i] < fids[j]
 	})
 	var immutable []*memoryTable
-	sstMaxID := lsm.levelManger.maxFID.Load()
+	sstMaxID := lsm.LevelManger.maxFID.Load()
 	for _, fid := range fids {
 		if fid == sstMaxID {
 			fmt.Printf("LSM.#recovery(): sstMaxFid(%d.sst) is not allow equal to wal fid(%d.wal)!", sstMaxID, fid)
@@ -140,8 +140,8 @@ func (lsm *LSM) recovery() (*memoryTable, []*memoryTable) {
 		}
 		immutable = append(immutable, memTable)
 	}
-	if maxFid > lsm.levelManger.maxFID.Load() {
-		lsm.levelManger.maxFID.Store(maxFid)
+	if maxFid > lsm.LevelManger.maxFID.Load() {
+		lsm.LevelManger.maxFID.Store(maxFid)
 	}
 	return lsm.NewMemoryTable(), immutable
 }
@@ -176,9 +176,9 @@ func (m *memoryTable) recovery2SkipList() error {
 	}
 	var readAt uint32 = 0
 	for {
-		var e model.Entry
+		var e *model.Entry
 		e, readAt = m.wal.Read(m.wal.file.Fd)
-		if readAt > 0 && e.Value != nil {
+		if readAt > 0 && e != nil {
 			m.skipList.Put(e)
 			continue
 		} else {

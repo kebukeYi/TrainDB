@@ -169,7 +169,7 @@ func TestValueGC(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		entry := model.NewEntry(kvList[i].Key, nil)
 		entry.Meta |= common.BitDelete
-		require.NoError(t, db.Set(&entry))
+		require.NoError(t, db.Set(entry))
 	}
 
 	// 直接开始GC, 1.pickVlog需要和合并联动; 2.启动 vlog.file 的rewrite();

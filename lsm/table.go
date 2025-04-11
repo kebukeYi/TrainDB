@@ -19,7 +19,7 @@ import (
 
 const SSTableName string = ".sst"
 
-type table struct {
+type Table struct {
 	sst  *SSTable
 	lm   *LevelsManger
 	fid  uint64
@@ -27,9 +27,9 @@ type table struct {
 	Name string
 }
 
-func openTable(lm *LevelsManger, tableName string, builder *sstBuilder) (*table, error) {
+func OpenTable(lm *LevelsManger, tableName string, builder *sstBuilder) (*Table, error) {
 	var (
-		t   *table
+		t   *Table
 		err error
 	)
 	fid := utils.FID(tableName)
@@ -40,7 +40,7 @@ func openTable(lm *LevelsManger, tableName string, builder *sstBuilder) (*table,
 			return nil, err
 		}
 	} else {
-		t = &table{lm: lm, fid: fid, Name: strconv.FormatUint(fid, 10) + SSTableName}
+		t = &Table{lm: lm, fid: fid, Name: strconv.FormatUint(fid, 10) + SSTableName}
 		t.sst = OpenSStable(&utils.FileOptions{
 			FileName: tableName,
 			Flag:     os.O_CREATE | os.O_RDWR,
@@ -64,7 +64,7 @@ func openTable(lm *LevelsManger, tableName string, builder *sstBuilder) (*table,
 	return t, nil
 }
 
-func (t *table) Search(keyTs []byte) (entry model.Entry, err error) {
+func (t *Table) Search(keyTs []byte) (entry model.Entry, err error) {
 	t.IncrRef()
 	defer t.DecrRef()
 	indexData := t.sst.Indexs()
@@ -86,7 +86,7 @@ func (t *table) Search(keyTs []byte) (entry model.Entry, err error) {
 	return model.Entry{Version: -1}, common.ErrKeyNotFound
 }
 
-func (t *table) getBlock(idx int) (*block, error) {
+func (t *Table) getBlock(idx int) (*block, error) {
 	if idx >= len(t.sst.Indexs().GetOffsets()) {
 		return nil, errors.New("block out of index")
 	}
@@ -133,7 +133,7 @@ func (t *table) getBlock(idx int) (*block, error) {
 	return b, nil
 }
 
-func (t *table) getBlockOffset(idx int, blo *pb.BlockOffset) bool {
+func (t *Table) getBlockOffset(idx int, blo *pb.BlockOffset) bool {
 	indexData := t.sst.Indexs()
 	if idx < 0 || idx >= len(indexData.GetOffsets()) {
 		return false
@@ -143,15 +143,15 @@ func (t *table) getBlockOffset(idx int, blo *pb.BlockOffset) bool {
 	return true
 }
 
-func (t *table) read(off, sz int) ([]byte, error) {
+func (t *Table) read(off, sz int) ([]byte, error) {
 	return t.sst.Bytes(off, sz)
 }
 
-func (t *table) indexFIDKey() uint64 {
+func (t *Table) indexFIDKey() uint64 {
 	return t.fid
 }
 
-func (t *table) blockCacheKey(idx int) []byte {
+func (t *Table) blockCacheKey(idx int) []byte {
 	common.CondPanic(t.fid >= math.MaxUint32, fmt.Errorf("t.fid >= math.MaxUint32"))
 	common.CondPanic(uint32(idx) >= math.MaxUint32, fmt.Errorf("uint32(idx) >=  math.MaxUint32"))
 	buf := make([]byte, 8)
@@ -161,17 +161,17 @@ func (t *table) blockCacheKey(idx int) []byte {
 	return buf
 }
 
-func (t *table) Size() int64 { return t.sst.Size() }
+func (t *Table) Size() int64 { return t.sst.Size() }
 
-func (t *table) getStaleDataSize() uint32 {
+func (t *Table) getStaleDataSize() uint32 {
 	return t.sst.Indexs().StaleDataSize
 }
 
-func (t *table) IncrRef() {
+func (t *Table) IncrRef() {
 	atomic.AddInt32(&t.ref, 1)
 }
 
-func (t *table) DecrRef() error {
+func (t *Table) DecrRef() error {
 	atomic.AddInt32(&t.ref, -1)
 	if t.ref == 0 {
 		// TODO 从缓存中删除
@@ -185,7 +185,7 @@ func (t *table) DecrRef() error {
 	return nil
 }
 
-func decrRefs(tables []*table) error {
+func decrRefs(tables []*Table) error {
 	for _, t := range tables {
 		if err := t.DecrRef(); err != nil {
 			return err
@@ -194,11 +194,11 @@ func decrRefs(tables []*table) error {
 	return nil
 }
 
-func (t *table) GetCreatedAt() *time.Time {
+func (t *Table) GetCreatedAt() *time.Time {
 	return t.sst.GetCreatedAt()
 }
 
-func (t *table) Delete() error {
+func (t *Table) Delete() error {
 	//fmt.Printf("delete sstTable:  %d.sst;\n", t.sst.fid)
 	return t.sst.Delete()
 }
@@ -207,13 +207,13 @@ type tableIterator struct {
 	name         string
 	it           model.Item
 	opt          *model.Options
-	t            *table
+	t            *Table
 	blockIterPos int
 	biter        *blockIterator
 	err          error
 }
 
-func (t *table) NewTableIterator(opt *model.Options) *tableIterator {
+func (t *Table) NewTableIterator(opt *model.Options) *tableIterator {
 	t.IncrRef()
 	return &tableIterator{opt: opt, t: t, biter: &blockIterator{}, name: t.Name}
 }
