@@ -80,8 +80,8 @@ func (c *Cache) set(key, val interface{}) bool {
 }
 
 func (c *Cache) Get(key interface{}) (interface{}, bool) {
-	c.m.RLock()
-	defer c.m.RUnlock()
+	c.m.Lock()
+	defer c.m.Unlock()
 	return c.get(key)
 }
 
@@ -120,8 +120,8 @@ func (c *Cache) get(key interface{}) (interface{}, bool) {
 }
 
 func (c *Cache) Del(key interface{}) (interface{}, bool) {
-	c.m.RLock()
-	defer c.m.RUnlock()
+	c.m.Lock()
+	defer c.m.Unlock()
 	return c.del(key)
 }
 

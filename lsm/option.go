@@ -1,6 +1,7 @@
 package lsm
 
 import (
+	"github.com/kebukeYi/TrainDB/common"
 	"os"
 )
 
@@ -48,7 +49,7 @@ func GetLSMDefaultOpt(dirPath string) *Options {
 		BaseLevelSize:       10 << 20,
 		LevelSizeMultiplier: 10,
 		TableSizeMultiplier: 2,
-		MaxLevelNum:         7,
+		MaxLevelNum:         common.MaxLevelNum,
 		NumCompactors:       4,
 		NumLevelZeroTables:  5,
 

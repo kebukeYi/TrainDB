@@ -65,6 +65,19 @@ func TestOpenTrainDBOpt(t *testing.T) {
 			return
 		}
 	}()
+	fmt.Println("=============db.Iterator=========================================")
+	iter := db.NewDBIterator(&model.Options{IsAsc: true})
+	defer func() { _ = iter.Close() }()
+	iter.Rewind()
+	for iter.Valid() {
+		it := iter.Item()
+		if it.Item.Version != -1 {
+			fmt.Printf("db.Iterator key=%s, value=%s, Meta=%d, versioin=%d \n",
+				model.ParseKey(it.Item.Key), it.Item.Value, it.Item.Meta, it.Item.Version)
+		}
+		iter.Next()
+	}
+	fmt.Println("======================over====================================")
 	fmt.Printf("err:%v \n", err)
 }
 

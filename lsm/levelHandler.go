@@ -74,8 +74,7 @@ func (leh *levelHandler) searchLnSST(key []byte) (model.Entry, error) {
 	if entry, err = getTable.Search(key); entry.Version != -1 {
 		return entry, nil
 	}
-	common.Err(err)
-	return model.Entry{Version: -1}, common.ErrKeyNotFound
+	return model.Entry{Version: -1}, err
 }
 
 // 默认从 首部 开始查询, 找到第一个大于等于key的sst, 除了l0层之外, 其他层的 Table 都是递增规律;
