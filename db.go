@@ -94,12 +94,35 @@ func (db *TrainKVDB) Get(key []byte) (*model.Entry, error) {
 }
 
 func (db *TrainKVDB) Set(entry *model.Entry) error {
+	//if entry.Key == nil || len(entry.Key) == 0 {
+	//	return common.ErrEmptyKey
+	//}
+	//entry.Key = model.KeyWithTs(entry.Key)
+	//entry.Version = model.ParseTsVersion(entry.Key)
+	//err := db.BatchSet([]*model.Entry{entry})
+	err := db.SetToLSM(entry)
+	return err
+}
+
+func (db *TrainKVDB) SetToLSM(entry *model.Entry) error {
 	if entry.Key == nil || len(entry.Key) == 0 {
 		return common.ErrEmptyKey
 	}
+	var (
+		vp  *model.ValuePtr
+		err error
+	)
 	entry.Key = model.KeyWithTs(entry.Key)
 	entry.Version = model.ParseTsVersion(entry.Key)
-	err := db.BatchSet([]*model.Entry{entry})
+	if db.ShouldWriteValueToLSM(entry) {
+	} else {
+		if vp, err = db.vlog.NewValuePtr(entry); err != nil {
+			return err
+		}
+		entry.Meta |= common.BitValuePointer
+		entry.Value = vp.Encode() // vlog位置信息进行编码
+	}
+	err = db.Lsm.Put(entry)
 	return err
 }
 

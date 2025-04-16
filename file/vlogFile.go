@@ -74,6 +74,8 @@ func (vlog *VLogFile) DoneWriting(offset uint32) error {
 }
 
 func (vlog *VLogFile) Write(offset uint32, buf []byte) (err error) {
+	vlog.Lock.Lock()
+	defer vlog.Lock.Unlock()
 	return vlog.f.AppendBuffer(offset, buf)
 }
 

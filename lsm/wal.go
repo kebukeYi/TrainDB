@@ -11,6 +11,7 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"sync"
 )
 
 const (
@@ -64,6 +65,7 @@ func (h *WalHeader) decode(reader *model.HashReader) (int, error) {
 type WAL struct {
 	file    *file.MmapFile
 	opt     *utils.FileOptions
+	lock    sync.Mutex
 	size    uint32
 	writeAt uint32
 	readAt  uint32
@@ -90,6 +92,8 @@ func OpenWalFile(opt *utils.FileOptions) *WAL {
 
 func (w *WAL) Write(e *model.Entry) error {
 	walEncode, size := w.WalEncode(e)
+	w.lock.Lock()
+	defer w.lock.Unlock()
 	err := w.file.AppendBuffer(w.writeAt, walEncode)
 	if err != nil {
 		return err

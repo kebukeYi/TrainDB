@@ -215,9 +215,9 @@ func (vlog *ValueLog) NewValuePtr(entry *model.Entry) (*model.ValuePtr, error) {
 }
 
 func (vlog *ValueLog) Write(reqs []*Request) error {
-	vlog.Mux.Lock()
+	vlog.Mux.RLock()
 	curVlogFile := vlog.filesMap[vlog.maxFid]
-	vlog.Mux.Unlock()
+	vlog.Mux.RUnlock()
 	var buf bytes.Buffer
 
 	flushToFile := func() error {
@@ -247,11 +247,11 @@ func (vlog *ValueLog) Write(reqs []*Request) error {
 			}
 			newFid := atomic.AddUint32(&vlog.maxFid, 1)
 			common.CondPanic(newFid <= 0, fmt.Errorf("newid has overflown uint32: %v", newFid))
-			_, err := vlog.createVlogFile(newFid)
+			var err error
+			curVlogFile, err = vlog.createVlogFile(newFid)
 			if err != nil {
 				return err
 			}
-			curVlogFile = vlog.filesMap[newFid]
 			atomic.AddInt32(&vlog.Db.logRotates, 1)
 		}
 		return nil
@@ -283,8 +283,7 @@ func (vlog *ValueLog) Write(reqs []*Request) error {
 		}
 
 		vlog.entriesWrittenNum += int32(writteNum)
-		writeNow := vlog.getWriteOffset()+uint32(buf.Len()) > uint32(vlog.Opt.ValueLogFileSize) ||
-			vlog.entriesWrittenNum > vlog.Opt.ValueLogMaxEntries
+		writeNow := vlog.getWriteOffset()+uint32(buf.Len()) > uint32(vlog.Opt.ValueLogFileSize) || vlog.entriesWrittenNum > vlog.Opt.ValueLogMaxEntries
 		if writeNow {
 			if err := toWrite(); err != nil {
 				return nil

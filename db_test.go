@@ -87,7 +87,7 @@ func TestAPI(t *testing.T) {
 	//	time.Sleep(8 * time.Second)
 	//}()
 	clearDir(dbTestOpt.WorkDir)
-	dbTestOpt = lsm.GetLSMDefaultOpt(dbTestOpt.WorkDir)
+	//dbTestOpt = lsm.GetLSMDefaultOpt(dbTestOpt.WorkDir)
 	db, _, callBack := Open(dbTestOpt)
 	defer func() {
 		_ = db.Close()
