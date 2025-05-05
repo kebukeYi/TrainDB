@@ -1,11 +1,13 @@
 package TrainDB
 
 import (
+	"github.com/gofrs/flock"
 	"github.com/kebukeYi/TrainDB/common"
 	"github.com/kebukeYi/TrainDB/lsm"
 	"github.com/kebukeYi/TrainDB/model"
 	"github.com/kebukeYi/TrainDB/utils"
 	"github.com/pkg/errors"
+	"path/filepath"
 	"sync"
 )
 
@@ -34,6 +36,12 @@ func Open(opt *lsm.Options) (*TrainKVDB, error, func() error) {
 	}
 	callBack, _ := lsm.CheckLSMOpt(opt)
 	db := &TrainKVDB{Opt: opt}
+
+	fileLock := flock.New(filepath.Join(opt.WorkDir, common.LockFile))
+	hold, err := fileLock.TryLock()
+	if err != nil || !hold {
+		return nil, common.ErrLockDB, callBack
+	}
 
 	db.initVlog()
 	opt.DiscardStatsCh = &db.vlog.VLogFileDisCardStaInfo.FlushCh
@@ -202,7 +210,7 @@ func (db *TrainKVDB) handleWriteCh(closer *utils.Closer) {
 			reqs = append(reqs, r)
 			reqLen = int64(len(reqs))
 
-			if reqLen >= common.KVWriteChRequestCapacity {
+			if reqLen >= 2*common.KVWriteChRequestCapacity {
 				blockChan <- struct{}{}
 				go writeRequest(reqs)
 				reqs = make([]*Request, 0, 10)

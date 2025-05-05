@@ -10,6 +10,7 @@ const (
 	VlogFileDiscardStatsKey           = "VlogFileDiscard" // For storing lfDiscardStats
 	ManifestFilename                  = "MANIFEST"
 	ManifestRewriteFilename           = "REWRITEMANIFEST"
+	LockFile                          = "LOCKFILE"
 	ManifestDeletionsRewriteThreshold = 10000
 	ManifestDeletionsRatio            = 10
 	ManifestFileHeaderLen             = 8

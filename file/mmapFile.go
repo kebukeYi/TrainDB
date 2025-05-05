@@ -110,6 +110,7 @@ func (m *MmapFile) AppendBuffer(offset uint32, buf []byte) error {
 	if dLen != needSize {
 		return errors.Errorf("dLen != needSize AppendBuffer failed")
 	}
+	buf = nil
 	return nil
 }
 

@@ -16,6 +16,7 @@ var (
 )
 
 var (
+	ErrLockDB        = errors.New("lock database error")
 	ErrEmptyKey      = errors.New("key can not be empty")
 	ErrOutOffset     = errors.New("out offset")
 	ErrNotFoundTable = errors.New("not found table of key")
