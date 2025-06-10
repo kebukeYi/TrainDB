@@ -16,7 +16,9 @@ import (
 
 //var benchMarkDir = "/usr/projects_gen_data/goprogendata/trainkvdata/test/benchmk"
 
-var benchMarkDir = "F:\\ProjectsData\\golang\\TrainDB\\benchmk"
+//var benchMarkDir = "F:\\ProjectsData\\golang\\TrainDB\\benchmk"
+
+var benchMarkDir = "/usr/golanddata/triandb/benchmk2"
 
 var benchMarkOpt = &lsm.Options{
 	WorkDir:             benchMarkDir,
