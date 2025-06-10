@@ -12,7 +12,8 @@ var triandb *TrainDB.TrainKVDB
 
 func initTrainDB() {
 	fmt.Println("init TrainDB")
-	dir := "F:\\ProjectsData\\golang\\TrainDB\\benchmk"
+	//dir := "F:\\ProjectsData\\golang\\TrainDB\\benchmk"
+	dir := "/usr/golanddata/triandb/benchmk1"
 	clearDir(dir)
 	trianDB, err, _ := TrainDB.Open(lsm.GetLSMDefaultOpt(dir))
 	if err != nil {

@@ -5,18 +5,28 @@ import (
 	"math"
 )
 
-type BloomFilter []byte
+type Filter []byte
 
-func (b BloomFilter) mayContain(keyHash uint32) bool {
-	if len(b) < 2 {
+type BloomFilter struct {
+	bitmap Filter
+	hashs  uint8
+}
+
+func (b *BloomFilter) MayContain(keyHash uint32) bool {
+	if b.Len() < 2 {
 		return false
 	}
-	hashs := b[len(b)-1]
-	nBits := uint32(8 * (len(b) - 1))
+	k := b.hashs
+	if k > 30 {
+		// This is reserved for potentially new encodings for short Bloom filters.
+		// Consider it a match.
+		return true
+	}
+	nBits := uint32(8 * (b.Len() - 1))
 	delta := keyHash>>17 | keyHash<<15
-	for j := uint8(0); j < hashs; j++ {
+	for j := uint8(0); j < k; j++ {
 		bitPos := keyHash % nBits
-		if b[bitPos/8]&(1<<bitPos%8) == 0 {
+		if b.bitmap[bitPos/8]&(1<<bitPos%8) == 0 {
 			return false
 		}
 		keyHash += delta
@@ -24,23 +34,23 @@ func (b BloomFilter) mayContain(keyHash uint32) bool {
 	return true
 }
 
-func (b BloomFilter) mayContainKey(key []byte) bool {
-	return b.mayContain(utils.Hash(key))
+func (b *BloomFilter) mayContainKey(key []byte) bool {
+	return b.MayContain(utils.Hash(key))
 }
 
-func (b BloomFilter) Insert(keyHash uint32) bool {
-	hashs := b[len(b)-1]
-	nBits := uint32(8 * (len(b) - 1))
+func (b *BloomFilter) Insert(keyHash uint32) bool {
+	hashs := b.hashs
+	nBits := uint32(8 * (b.Len() - 1))
 	delta := keyHash>>17 | keyHash<<15
 	for i := uint8(0); i < hashs; i++ {
 		bitPos := keyHash % nBits
-		b[bitPos/8] |= 1 << (bitPos % 8)
+		b.bitmap[bitPos/8] |= 1 << (bitPos % 8)
 		keyHash += delta
 	}
 	return true
 }
 
-func (b BloomFilter) AllowKey(key []byte) bool {
+func (b *BloomFilter) AllowKey(key []byte) bool {
 	if b == nil {
 		return false
 	}
@@ -53,32 +63,37 @@ func (b BloomFilter) AllowKey(key []byte) bool {
 	return already
 }
 
-func (b BloomFilter) Allow(keyHash uint32) bool {
+func (b *BloomFilter) Allow(keyHash uint32) bool {
 	if b == nil {
 		return false
 	}
-	already := b.mayContain(keyHash)
+	already := b.MayContain(keyHash)
 	if !already {
 		b.Insert(keyHash)
 	}
 	return already
 }
 
-func (b BloomFilter) reset() {
+func (b *BloomFilter) reset() {
 	if b == nil {
 		return
 	}
-	for i := 0; i < len(b); i++ {
-		b[i] = 0
+	for i := range b.bitmap {
+		b.bitmap[i] = 0
 	}
 }
 
-func newBloomFilter(numEntries int, falsePositive float64) BloomFilter {
+func (b *BloomFilter) Len() int32 {
+	return int32(len(b.bitmap))
+}
+
+func newBloomFilter(numEntries int, falsePositive float64) *BloomFilter {
 	bitsPerKey := bloomBitsPerKey(numEntries, falsePositive)
 	return initBloomFilter(numEntries, bitsPerKey)
 }
 
-func initBloomFilter(numEntries int, bitsPerKey int) BloomFilter {
+func initBloomFilter(numEntries int, bitsPerKey int) *BloomFilter {
+	bf := &BloomFilter{}
 	if bitsPerKey < 0 {
 		bitsPerKey = 0
 	}
@@ -90,6 +105,8 @@ func initBloomFilter(numEntries int, bitsPerKey int) BloomFilter {
 	if hashs > 30 {
 		hashs = 30
 	}
+	bf.hashs = uint8(hashs)
+
 	nBits := numEntries * bitsPerKey
 	if nBits < 64 {
 		nBits = 64
@@ -97,8 +114,11 @@ func initBloomFilter(numEntries int, bitsPerKey int) BloomFilter {
 	nBytes := (nBits + 7) / 8
 	nBits = nBytes * 8
 	filter := make([]byte, nBytes+1)
+
 	filter[nBytes] = uint8(hashs)
-	return filter
+	bf.bitmap = filter
+
+	return bf
 }
 
 func bloomBitsPerKey(numEntries int, fp float64) int {

@@ -11,7 +11,7 @@ type Cache struct {
 	m         sync.RWMutex
 	wlru      *winLRU
 	slru      *segmentedLRU
-	door      BloomFilter
+	door      *BloomFilter
 	cmkt      *cmSketch
 	total     int32
 	threshold int32
