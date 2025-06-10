@@ -102,7 +102,12 @@ func (db *TrainKVDB) Get(key []byte) (*model.Entry, error) {
 }
 
 func (db *TrainKVDB) Set(entry *model.Entry) error {
-	err := db.SetToLSM(entry)
+	if entry.Key == nil || len(entry.Key) == 0 {
+		return common.ErrEmptyKey
+	}
+	entry.Key = model.KeyWithTs(entry.Key)
+	entry.Version = model.ParseTsVersion(entry.Key)
+	err := db.BatchSet([]*model.Entry{entry})
 	return err
 }
 
