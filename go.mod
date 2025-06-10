@@ -16,6 +16,5 @@ require (
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect; 指定提交记录版本号;
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	github.com/gofrs/flock v0.12.1 // indirect
 )
-
-require github.com/gofrs/flock v0.12.1 // indirect
